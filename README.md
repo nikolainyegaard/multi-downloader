@@ -6,6 +6,8 @@ Paste a link, tap Download, get the file. Powered by [yt-dlp](https://github.com
 
 *(\*1000+ supported sites; limitations may apply for login-gated content)*
 
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/nikolainyegaard)
+
 ---
 
 ## Setup
