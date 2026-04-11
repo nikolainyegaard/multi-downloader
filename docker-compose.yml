@@ -1,9 +1,34 @@
 services:
   multi-downloader:
-    image: ghcr.io/nikolainyegaard/multi-downloader:dev
+    image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
     restart: unless-stopped
     environment:
       TZ: "Europe/Oslo"
-    ports:
-      - "127.0.0.1:8000:8000"
+    volumes:
+      - config:/app/config:ro
+    expose:
+      - "8000"
+    networks:
+      - caddy_net
+
+  multi-downloader-admin:
+    image: ghcr.io/nikolainyegaard/multi-downloader:latest
+    container_name: multi-downloader-admin
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Oslo"
+      ADMIN_MODE: "1"
+    volumes:
+      - config:/app/config:rw
+    expose:
+      - "8000"
+    networks:
+      - caddy_net
+
+volumes:
+  config:
+
+networks:
+  caddy_net:
+    external: true

@@ -6,14 +6,15 @@
   <meta name="theme-color" content="#0f0f0f" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>multi-downloader</title>
+  <title>__SITE_TITLE__</title>
   <link rel="stylesheet" href="/static/style.css?v=__VERSION__" />
+  <style>:root { --accent: __ACCENT_COLOR__; --accent-hover: color-mix(in srgb, __ACCENT_COLOR__ 85%, black); }</style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>multi-downloader</h1>
-      <p class="subtitle">Paste a link, download the video</p>
+      <h1>__SITE_TITLE__</h1>
+      <p class="subtitle">__SUBTITLE__</p>
     </header>
 
     <div class="card">
@@ -41,7 +42,7 @@
           spellcheck="false"
           placeholder="https://..."
         />
-        <button id="paste-btn" type="button">Paste</button>
+        <button id="paste-btn" type="button"__PASTE_HIDDEN__>Paste</button>
       </div>
 
       <button id="download-btn" type="button">↓ Download</button>
@@ -50,7 +51,7 @@
     </div>
 
     <footer>
-      Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a>
+      __FOOTER_TEXT__
     </footer>
   </div>
 

@@ -13,7 +13,7 @@ let previewController = null; // AbortController for in-flight /api/info request
 
 // ── Paste ─────────────────────────────────────────────────────────────────────
 
-pasteBtn.addEventListener('click', async () => {
+pasteBtn?.addEventListener('click', async () => {
   if (!navigator.clipboard?.readText) {
     urlInput.focus();
     showStatus('error', 'Clipboard not available — paste manually');
