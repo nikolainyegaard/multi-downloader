@@ -16,7 +16,7 @@ let previewController = null; // AbortController for in-flight /api/info request
 pasteBtn?.addEventListener('click', async () => {
   if (!navigator.clipboard?.readText) {
     urlInput.focus();
-    showStatus('error', 'Clipboard not available — paste manually');
+    showStatus('error', 'Clipboard not available; paste manually');
     return;
   }
   try {
@@ -27,7 +27,7 @@ pasteBtn?.addEventListener('click', async () => {
     if (urlInput.value) triggerPreview(urlInput.value);
   } catch {
     urlInput.focus();
-    showStatus('error', 'Could not read clipboard — paste manually');
+    showStatus('error', 'Could not read clipboard; paste manually');
   }
 });
 
@@ -71,7 +71,7 @@ downloadBtn.addEventListener('click', async () => {
       throw new Error(data.detail || `Server error (${response.status})`);
     }
 
-    // Server confirmed — clear the input immediately, keep the preview visible
+    // Server confirmed; clear the input immediately, keep the preview visible
     urlInput.value = '';
 
     const filename = filenameFromResponse(response) || 'video.mp4';
