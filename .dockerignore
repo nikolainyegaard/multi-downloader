@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.env
+.envrc
+.venv
+venv/
+*.egg-info/
+.git/
+CLAUDE.md
+README.md
+CHANGELOG.md
+docker-compose.yml
+docker-compose.override.yml

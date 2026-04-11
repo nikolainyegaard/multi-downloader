@@ -201,6 +201,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Language model files
+CLAUDE.md
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
