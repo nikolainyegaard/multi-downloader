@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>multi-downloader</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=__VERSION__" />
 </head>
 <body>
   <div class="container">
@@ -17,6 +17,19 @@
     </header>
 
     <div class="card">
+      <div id="preview" hidden>
+        <div id="preview-loading" class="preview-loading">
+          <span class="spinner spinner--muted"></span>
+        </div>
+        <div id="preview-content" class="preview-content" hidden>
+          <img id="preview-thumb" alt="" />
+          <div class="preview-info">
+            <p id="preview-title" class="preview-title"></p>
+            <p id="preview-meta" class="preview-meta"></p>
+          </div>
+        </div>
+      </div>
+
       <div class="input-row">
         <input
           id="url-input"
@@ -41,6 +54,6 @@
     </footer>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=__VERSION__"></script>
 </body>
 </html>

@@ -2,6 +2,27 @@ import os
 import yt_dlp
 
 
+def get_video_info(url: str) -> dict:
+    """
+    Fetch metadata for a URL without downloading.
+    Returns a dict with title, thumbnail, duration, uploader.
+    Raises yt_dlp.utils.DownloadError on failure.
+    """
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        return {
+            "title": info.get("title"),
+            "thumbnail": info.get("thumbnail"),
+            "duration": info.get("duration"),  # seconds, may be None
+            "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
+        }
+
+
 def download_video(url: str, output_dir: str) -> str:
     """
     Download a video to output_dir using yt-dlp.

@@ -7,15 +7,16 @@ from urllib.parse import quote
 
 import yt_dlp
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.downloader import download_video
+from app.downloader import download_video, get_video_info
 
 app = FastAPI()
 
 STATIC_DIR = Path(__file__).parent / "static"
+APP_VERSION = os.getenv("APP_VERSION", "dev")
 
 
 class DownloadRequest(BaseModel):
@@ -24,7 +25,24 @@ class DownloadRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return FileResponse(STATIC_DIR / "index.html")
+    html = (STATIC_DIR / "index.html").read_text()
+    html = html.replace("__VERSION__", APP_VERSION)
+    return HTMLResponse(html)
+
+
+@app.post("/api/info")
+async def info(req: DownloadRequest):
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=422, detail="URL is required")
+    try:
+        data = await asyncio.to_thread(get_video_info, url)
+        return data
+    except yt_dlp.utils.DownloadError as e:
+        msg = str(e).removeprefix("ERROR: ")
+        raise HTTPException(status_code=400, detail=msg)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/download")

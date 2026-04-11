@@ -19,6 +19,8 @@
   padding: 0;
 }
 
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
 }
@@ -168,6 +170,64 @@ h1 {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Spinner variant for light-on-dark surfaces */
+.spinner--muted {
+  border-color: var(--border);
+  border-top-color: var(--text-muted);
+}
+
+/* Preview card */
+#preview {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-loading {
+  padding: 16px;
+}
+
+.preview-content {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+#preview-thumb {
+  width: 96px;
+  height: 54px; /* 16:9 */
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.preview-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 /* Status message */

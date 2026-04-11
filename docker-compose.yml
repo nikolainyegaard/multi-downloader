@@ -1,6 +1,6 @@
 services:
   multi-downloader:
-    image: ghcr.io/nikolainyegaard/multi-downloader:latest
+    image: ghcr.io/nikolainyegaard/multi-downloader:dev
     container_name: multi-downloader
     restart: unless-stopped
     environment:
