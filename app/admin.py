@@ -39,7 +39,6 @@ class ConfigUpdate(BaseModel):
     site_title: str = "multi-downloader"
     subtitle: str = "Paste a link, download the video"
     accent_color: str = "#3b82f6"
-    footer_text: str = "Powered by yt-dlp"
     show_paste_button: bool = True
     custom_logo: bool = False
     kofi_username: str = ""

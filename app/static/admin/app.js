@@ -11,7 +11,6 @@ async function loadConfig() {
     document.getElementById('site_title').value          = cfg.site_title   ?? '';
     document.getElementById('subtitle').value            = cfg.subtitle     ?? '';
     document.getElementById('accent_color').value        = cfg.accent_color ?? '#3b82f6';
-    document.getElementById('footer_text').value         = cfg.footer_text  ?? '';
     document.getElementById('show_paste_button').checked = cfg.show_paste_button ?? true;
     document.getElementById('kofi_username').value        = cfg.kofi_username   ?? '';
   } catch (err) {
@@ -28,7 +27,6 @@ form.addEventListener('submit', async (e) => {
     site_title:        document.getElementById('site_title').value,
     subtitle:          document.getElementById('subtitle').value,
     accent_color:      document.getElementById('accent_color').value,
-    footer_text:       document.getElementById('footer_text').value,
     show_paste_button: document.getElementById('show_paste_button').checked,
     custom_logo:       false,
     kofi_username:     document.getElementById('kofi_username').value.trim(),

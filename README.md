@@ -162,11 +162,14 @@ Settings available in the admin UI:
 | Site title | Displayed in the browser tab and page header |
 | Subtitle | Tagline below the title |
 | Accent color | Color picker for buttons and highlights |
-| Footer text | Text in the page footer |
 | Show Paste button | Toggle the Paste button on/off |
 | Ko-fi username | Your Ko-fi username to show a support widget; leave empty to disable |
 
 Settings are stored in `/app/config/config.json` on the shared Docker volume. The public container mounts the volume read-only.
+
+### Legal disclaimer
+
+To show a "By downloading, you agree to our Legal Disclaimer" notice on the public site and serve the disclaimer at `/legal-disclaimer`, create a file called `disclaimer.md` in your `./config/` directory and write your disclaimer in Markdown. Delete the file to remove the notice.
 
 ---
 

@@ -5,13 +5,14 @@ import tempfile
 from pathlib import Path
 from urllib.parse import quote
 
+import mistune
 import yt_dlp
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import load_config
+from app.config import CONFIG_DIR, load_config
 from app.downloader import download_video, get_video_info
 
 app = FastAPI()
@@ -32,8 +33,18 @@ async def root():
     html = html.replace("__SITE_TITLE__", cfg.site_title)
     html = html.replace("__SUBTITLE__", cfg.subtitle)
     html = html.replace("__ACCENT_COLOR__", cfg.accent_color)
-    html = html.replace("__FOOTER_TEXT__", cfg.footer_text)
     html = html.replace("__PASTE_HIDDEN__", "" if cfg.show_paste_button else " hidden")
+    disclaimer_path = CONFIG_DIR / "disclaimer.md"
+    if disclaimer_path.exists():
+        disclaimer_notice = (
+            '<p class="disclaimer-notice">'
+            'By downloading, you agree to our '
+            '<a href="/legal-disclaimer" target="_blank" rel="noopener">Legal Disclaimer</a>.'
+            '</p>'
+        )
+    else:
+        disclaimer_notice = ""
+    html = html.replace("__DISCLAIMER_NOTICE__", disclaimer_notice)
     dev_banner = (
         f'<p class="dev-banner">'
         f'{APP_VERSION} &bull; '
@@ -57,6 +68,36 @@ async def root():
         kofi_script = ""
     html = html.replace("__KOFI_SCRIPT__", kofi_script)
     return HTMLResponse(html)
+
+
+@app.get("/legal-disclaimer")
+async def legal_disclaimer():
+    disclaimer_path = CONFIG_DIR / "disclaimer.md"
+    if not disclaimer_path.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+    content = disclaimer_path.read_text().strip()
+    if not content:
+        raise HTTPException(status_code=404, detail="Not found")
+    cfg = load_config()
+    rendered = mistune.html(content)
+    page = (
+        '<!DOCTYPE html>'
+        '<html lang="en">'
+        '<head>'
+        '<meta charset="UTF-8" />'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
+        '<title>Legal Disclaimer</title>'
+        f'<link rel="stylesheet" href="/static/style.css?v={APP_VERSION}" />'
+        f'<style>:root {{ --accent: {cfg.accent_color}; --accent-hover: color-mix(in srgb, {cfg.accent_color} 85%, black); }}</style>'
+        '</head>'
+        '<body>'
+        '<div class="container legal">'
+        f'{rendered}'
+        '</div>'
+        '</body>'
+        '</html>'
+    )
+    return HTMLResponse(page)
 
 
 @app.post("/api/info")

@@ -252,17 +252,75 @@ h1 {
   color: var(--success);
 }
 
-/* Footer */
-footer {
+/* Disclaimer notice */
+.disclaimer-notice {
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
-footer a {
+.disclaimer-notice a {
   color: var(--text-muted);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Legal disclaimer page */
+.legal {
+  max-width: 680px;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.legal h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.legal h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 28px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.legal p,
+.legal li {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+
+.legal ul,
+.legal ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.legal strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legal em {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.legal a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
 }
 
 /* Version tag */
