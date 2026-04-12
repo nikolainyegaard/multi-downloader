@@ -13,6 +13,7 @@ async function loadConfig() {
     document.getElementById('accent_color').value        = cfg.accent_color ?? '#3b82f6';
     document.getElementById('footer_text').value         = cfg.footer_text  ?? '';
     document.getElementById('show_paste_button').checked = cfg.show_paste_button ?? true;
+    document.getElementById('kofi_username').value        = cfg.kofi_username   ?? '';
   } catch (err) {
     showStatus('error', 'Could not load config: ' + err.message);
   }
@@ -30,6 +31,7 @@ form.addEventListener('submit', async (e) => {
     footer_text:       document.getElementById('footer_text').value,
     show_paste_button: document.getElementById('show_paste_button').checked,
     custom_logo:       false,
+    kofi_username:     document.getElementById('kofi_username').value.trim(),
   };
 
   try {

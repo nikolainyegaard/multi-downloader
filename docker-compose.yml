@@ -6,7 +6,7 @@ services:
     environment:
       TZ: "Europe/Oslo"
     volumes:
-      - config:/app/config:ro
+      - ./config:/app/config:ro
     expose:
       - "8000"
     networks:
@@ -20,14 +20,11 @@ services:
       TZ: "Europe/Oslo"
       ADMIN_MODE: "1"
     volumes:
-      - config:/app/config:rw
+      - ./config:/app/config:rw
     expose:
       - "8000"
     networks:
       - caddy_net
-
-volumes:
-  config:
 
 networks:
   caddy_net:

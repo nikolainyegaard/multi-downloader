@@ -16,7 +16,7 @@ Paste a link, tap Download, get the file. Powered by [yt-dlp](https://github.com
 
 Create a folder on your server and drop in a `docker-compose.yml`.
 
-**Without admin panel** (single container, simpler):
+**Without admin panel** (single container, simplest):
 
 ```yaml
 services:
@@ -30,7 +30,7 @@ services:
       - "127.0.0.1:8000:8000"
 ```
 
-**With admin panel** (two containers, config volume; see [Admin panel](#admin-panel)):
+**With admin panel, no Caddy** (two containers, different host ports):
 
 ```yaml
 services:
@@ -41,7 +41,37 @@ services:
     environment:
       TZ: "Europe/Oslo"
     volumes:
-      - config:/app/config:ro
+      - ./config:/app/config:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  multi-downloader-admin:
+    image: ghcr.io/nikolainyegaard/multi-downloader:latest
+    container_name: multi-downloader-admin
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Oslo"
+      ADMIN_MODE: "1"
+    volumes:
+      - ./config:/app/config:rw
+    ports:
+      - "127.0.0.1:8001:8000"
+```
+
+Public site at `http://localhost:8000`, admin at `http://localhost:8001`.
+
+**With admin panel and Caddy** (two containers, routed by subdomain; see [Admin panel](#admin-panel)):
+
+```yaml
+services:
+  multi-downloader:
+    image: ghcr.io/nikolainyegaard/multi-downloader:latest
+    container_name: multi-downloader
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Oslo"
+    volumes:
+      - ./config:/app/config:ro
     expose:
       - "8000"
     networks:
@@ -55,14 +85,11 @@ services:
       TZ: "Europe/Oslo"
       ADMIN_MODE: "1"
     volumes:
-      - config:/app/config:rw
+      - ./config:/app/config:rw
     expose:
       - "8000"
     networks:
       - caddy_net
-
-volumes:
-  config:
 
 networks:
   caddy_net:
@@ -137,6 +164,7 @@ Settings available in the admin UI:
 | Accent color | Color picker for buttons and highlights |
 | Footer text | Text in the page footer |
 | Show Paste button | Toggle the Paste button on/off |
+| Ko-fi username | Your Ko-fi username to show a support widget; leave empty to disable |
 
 Settings are stored in `/app/config/config.json` on the shared Docker volume. The public container mounts the volume read-only.
 

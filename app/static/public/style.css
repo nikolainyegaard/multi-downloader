@@ -264,3 +264,18 @@ footer a {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Version tag */
+.dev-banner {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-family: monospace;
+}
+
+.dev-banner a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

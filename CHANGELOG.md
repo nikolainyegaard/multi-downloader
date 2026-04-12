@@ -8,16 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Admin panel via second container from the same image (`ADMIN_MODE=1`): branding (site title, subtitle, accent color), content (footer text, paste button toggle), and a reset-to-defaults action
+- Admin panel via second container from the same image (`ADMIN_MODE=1`): branding (site title, subtitle, accent color), content (footer text, paste button toggle), Ko-fi widget, and a reset-to-defaults action
 - `GET /api/config`, `POST /api/config`, `POST /api/config/reset` endpoints (admin mode only)
-- `config.json` written atomically to a Docker named volume (`/app/config/`); public container mounts it read-only, admin container read-write
+- `config.json` written atomically to a bind mount (`./config`) at `/app/config/`; public container mounts it read-only, admin container read-write
 - Public site applies config values to the HTML response on every request; no restart needed after a save
 - Accent color injected as an inline `<style>` block; hover shade derived via `color-mix()`; no hardcoded hover hex
+- Ko-fi support widget: set `kofi_username` in the admin panel to enable; leave empty to disable
+- Version and GitHub repo link shown in the page footer for all builds
 
 ### Changed
 - Static files moved from `app/static/` into `app/static/public/`; `app/static/admin/` added for admin UI
 - `main.py` is now a 4-line entry point; logic split into `public.py` and `admin.py`
-- `docker-compose.yml` updated: two services (`multi-downloader` + `multi-downloader-admin`) sharing a `config` named volume, both attached to `caddy_net`
+- `docker-compose.yml` updated: two services (`multi-downloader` + `multi-downloader-admin`) sharing a bind-mount config volume (`./config`), both attached to `caddy_net`; `volumes:` section removed
 
 ## [0.1.0] - 2026-04-11
 

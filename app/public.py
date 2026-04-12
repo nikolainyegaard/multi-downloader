@@ -34,6 +34,28 @@ async def root():
     html = html.replace("__ACCENT_COLOR__", cfg.accent_color)
     html = html.replace("__FOOTER_TEXT__", cfg.footer_text)
     html = html.replace("__PASTE_HIDDEN__", "" if cfg.show_paste_button else " hidden")
+    dev_banner = (
+        f'<p class="dev-banner">'
+        f'{APP_VERSION} &bull; '
+        f'<a href="https://github.com/nikolainyegaard/multi-downloader" target="_blank" rel="noopener">GitHub</a>'
+        f'</p>'
+    )
+    html = html.replace("__DEV_BANNER__", dev_banner)
+    if cfg.kofi_username:
+        kofi_script = (
+            f"<script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>\n"
+            f"  <script>\n"
+            f"    kofiWidgetOverlay.draw('{cfg.kofi_username}', {{\n"
+            f"      'type': 'floating-chat',\n"
+            f"      'floating-chat.donateButton.text': 'Support me',\n"
+            f"      'floating-chat.donateButton.background-color': '#00b9fe',\n"
+            f"      'floating-chat.donateButton.text-color': '#fff'\n"
+            f"    }});\n"
+            f"  </script>"
+        )
+    else:
+        kofi_script = ""
+    html = html.replace("__KOFI_SCRIPT__", kofi_script)
     return HTMLResponse(html)
 
 

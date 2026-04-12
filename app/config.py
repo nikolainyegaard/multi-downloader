@@ -7,7 +7,7 @@ CONFIG_DIR = Path(os.getenv("CONFIG_DIR", "/app/config"))
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 _FIELDS = frozenset(
-    {"site_title", "subtitle", "accent_color", "footer_text", "show_paste_button", "custom_logo"}
+    {"site_title", "subtitle", "accent_color", "footer_text", "show_paste_button", "custom_logo", "kofi_username"}
 )
 
 
@@ -19,6 +19,7 @@ class Config:
     footer_text: str = "Powered by yt-dlp"
     show_paste_button: bool = True
     custom_logo: bool = False
+    kofi_username: str = ""
 
 
 def load_config() -> Config:
