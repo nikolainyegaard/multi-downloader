@@ -88,7 +88,7 @@ async def legal_disclaimer():
         '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
         '<title>Legal Disclaimer</title>'
         f'<link rel="stylesheet" href="/static/style.css?v={APP_VERSION}" />'
-        f'<style>:root {{ --accent: {cfg.accent_color}; --accent-hover: color-mix(in srgb, {cfg.accent_color} 85%, black); }}</style>'
+        f'<style>:root {{ --accent: {cfg.accent_color}; --accent-hover: color-mix(in srgb, {cfg.accent_color} 85%, black); }} body {{ justify-content: flex-start; }}</style>'
         '</head>'
         '<body>'
         '<div class="container legal">'
