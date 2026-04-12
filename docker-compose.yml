@@ -1,4 +1,11 @@
 services:
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: bgutil-provider
+    restart: unless-stopped
+    networks:
+      - downloader_net
+
   multi-downloader:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
@@ -11,6 +18,9 @@ services:
       - "8000"
     networks:
       - caddy_net
+      - downloader_net
+    depends_on:
+      - bgutil-provider
 
   multi-downloader-admin:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
@@ -25,7 +35,11 @@ services:
       - "8000"
     networks:
       - caddy_net
+      - downloader_net
+    depends_on:
+      - bgutil-provider
 
 networks:
   caddy_net:
     external: true
+  downloader_net:

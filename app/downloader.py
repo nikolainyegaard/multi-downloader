@@ -11,6 +11,33 @@ _SERVICE_TAGS = {
     "x": "x",
 }
 
+# URL of the bgutil PO token provider sidecar. Override via env var if needed.
+_BGUTIL_URL = os.getenv("BGUTIL_URL", "http://bgutil-provider:4416")
+
+# Options shared across all yt-dlp invocations.
+_COMMON_OPTS: dict = {
+    "quiet": True,
+    "no_warnings": True,
+    "socket_timeout": 30,
+    "retries": 3,
+    "fragment_retries": 5,
+    "extractor_retries": 3,
+    "sleep_interval_requests": 0.5,
+    "http_headers": {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+    },
+    # bgutil sidecar generates YouTube Proof of Origin tokens without a logged-in account.
+    "extractor_args": {
+        "youtubepot-bgutilhttp": {
+            "base_url": [_BGUTIL_URL],
+        },
+    },
+}
+
 
 def _service_tag(extractor: str) -> str:
     base = extractor.lower().split(":")[0]
@@ -30,8 +57,7 @@ def get_video_info(url: str) -> dict:
     Raises yt_dlp.utils.DownloadError on failure.
     """
     opts = {
-        "quiet": True,
-        "no_warnings": True,
+        **_COMMON_OPTS,
         "skip_download": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -51,10 +77,9 @@ def download_video(url: str, output_dir: str) -> str:
     Raises yt_dlp.utils.DownloadError on failure.
     """
     opts = {
+        **_COMMON_OPTS,
         # Use a simple unique name during download; renamed to the final format after.
         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
         # Prefer pre-muxed MP4; fall back to best available.
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "merge_output_format": "mp4",

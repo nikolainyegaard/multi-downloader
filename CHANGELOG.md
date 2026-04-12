@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `bgutil-ytdlp-pot-provider` sidecar: generates YouTube Proof of Origin tokens without a logged-in account, bypassing YouTube bot detection for public use
+- Per-domain concurrency limit (semaphore, max 2) on `/api/info` and `/api/download` to avoid hammering a single platform
+
+### Changed
+- yt-dlp now uses a browser-like User-Agent, socket timeout (30s), retry limits (3 retries, 5 fragment retries), and a short inter-request sleep (0.5s) to reduce rate-limit exposure
+- `docker-compose.yml`: added `bgutil-provider` service and `downloader_net` internal network; downloader containers attach to both `caddy_net` and `downloader_net`
+- Minimum yt-dlp version pinned to `2025.05.22` (required for built-in POT provider framework)
+
 ## [0.2.0] - 2026-04-12
 
 ### Added

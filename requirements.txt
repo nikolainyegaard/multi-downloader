@@ -1,4 +1,5 @@
 fastapi
 uvicorn[standard]
-yt-dlp[default]
+yt-dlp[default]>=2025.05.22
 mistune
+bgutil-ytdlp-pot-provider

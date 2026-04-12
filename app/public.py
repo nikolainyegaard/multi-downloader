@@ -2,8 +2,9 @@ import asyncio
 import os
 import shutil
 import tempfile
+from collections import defaultdict
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import mistune
 import yt_dlp
@@ -19,6 +20,13 @@ app = FastAPI()
 
 STATIC_DIR = Path(__file__).parent / "static" / "public"
 APP_VERSION = os.getenv("APP_VERSION", "dev")
+
+# Limit concurrent yt-dlp operations per platform domain to avoid triggering rate limits.
+_domain_semaphores: dict[str, asyncio.Semaphore] = defaultdict(lambda: asyncio.Semaphore(2))
+
+
+def _domain(url: str) -> str:
+    return urlparse(url).netloc or url
 
 
 class DownloadRequest(BaseModel):
@@ -120,7 +128,8 @@ async def info(req: DownloadRequest):
     if not url:
         raise HTTPException(status_code=422, detail="URL is required")
     try:
-        data = await asyncio.to_thread(get_video_info, url)
+        async with _domain_semaphores[_domain(url)]:
+            data = await asyncio.to_thread(get_video_info, url)
         return data
     except yt_dlp.utils.DownloadError as e:
         msg = str(e).removeprefix("ERROR: ")
@@ -137,7 +146,8 @@ async def download(req: DownloadRequest):
 
     tmpdir = tempfile.mkdtemp()
     try:
-        filepath = await asyncio.to_thread(download_video, url, tmpdir)
+        async with _domain_semaphores[_domain(url)]:
+            filepath = await asyncio.to_thread(download_video, url, tmpdir)
     except yt_dlp.utils.DownloadError as e:
         shutil.rmtree(tmpdir, ignore_errors=True)
         msg = str(e).removeprefix("ERROR: ")
