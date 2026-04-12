@@ -16,12 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ko-fi support widget: set `kofi_username` in the admin panel to enable; leave empty to disable
 - Version and GitHub repo link shown in the page footer for all builds
 - Legal disclaimer page at `/legal-disclaimer`: rendered from `config/disclaimer.md` (Markdown); returns 404 if the file is absent; a notice linking to it appears on the main page when the file exists
+- System/Light/Dark theme toggle, fixed top-right; preference saved in `localStorage`; defaults to System (follows OS `prefers-color-scheme`); applies to the legal disclaimer page as well
 
 ### Changed
 - Static files moved from `app/static/` into `app/static/public/`; `app/static/admin/` added for admin UI
 - `main.py` is now a 4-line entry point; logic split into `public.py` and `admin.py`
 - `docker-compose.yml` updated: two services (`multi-downloader` + `multi-downloader-admin`) sharing a bind-mount config volume (`./config`), both attached to `caddy_net`; `volumes:` section removed
 - `footer_text` config field removed; the footer area is now used for the disclaimer notice (shown only when `config/disclaimer.md` exists)
+
+### Fixed
+- Preview card no longer appears as an empty box while metadata is loading; the card stays hidden until title, meta, and thumbnail data have been received
 
 ## [0.1.0] - 2026-04-11
 

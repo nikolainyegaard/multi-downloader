@@ -9,6 +9,7 @@
   <title>__SITE_TITLE__</title>
   <link rel="stylesheet" href="/static/style.css?v=__VERSION__" />
   <style>:root { --accent: __ACCENT_COLOR__; --accent-hover: color-mix(in srgb, __ACCENT_COLOR__ 85%, black); }</style>
+  <script>(function(){var t=localStorage.getItem('theme')||'system';document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
 <body>
   <div class="container">
@@ -52,6 +53,19 @@
 
     __DISCLAIMER_NOTICE__
     __DEV_BANNER__
+  </div>
+
+  <div class="theme-toggle">
+    <button class="theme-btn" id="theme-btn" aria-haspopup="true">
+      <span id="theme-icon" aria-hidden="true"></span>
+      <span id="theme-label">System</span>
+      <svg class="theme-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="theme-menu" id="theme-menu" hidden>
+      <button class="theme-option" data-theme="system">System</button>
+      <button class="theme-option" data-theme="light">Light</button>
+      <button class="theme-option" data-theme="dark">Dark</button>
+    </div>
   </div>
 
   <script src="/static/app.js?v=__VERSION__"></script>

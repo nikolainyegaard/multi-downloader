@@ -11,6 +11,31 @@
   --success: #22c55e;
   --radius: 12px;
   --radius-sm: 8px;
+  color-scheme: dark;
+}
+
+/* Light theme: system preference */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --surface-2: #f1f3f5;
+    --border: #e0e0e0;
+    --text: #111111;
+    --text-muted: #6b7280;
+    color-scheme: light;
+  }
+}
+
+/* Light theme: explicit selection */
+:root[data-theme="light"] {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --surface-2: #f1f3f5;
+  --border: #e0e0e0;
+  --text: #111111;
+  --text-muted: #6b7280;
+  color-scheme: light;
 }
 
 *, *::before, *::after {
@@ -321,6 +346,77 @@ h1 {
   border: none;
   border-top: 1px solid var(--border);
   margin: 28px 0;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 100;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 5px 10px;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+
+.theme-btn:hover {
+  border-color: var(--text-muted);
+}
+
+.theme-chevron {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.theme-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  min-width: 108px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  padding: 9px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.theme-option:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.theme-option.active {
+  color: var(--accent);
 }
 
 /* Version tag */
