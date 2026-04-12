@@ -204,6 +204,9 @@ cython_debug/
 # Language model files
 CLAUDE.md
 
+# Runtime config volume (bind mount; contains config.json, disclaimer.md, logs)
+config/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

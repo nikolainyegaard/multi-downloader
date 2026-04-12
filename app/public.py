@@ -1,0 +1,162 @@
+import asyncio
+import os
+import shutil
+import tempfile
+from pathlib import Path
+from urllib.parse import quote
+
+import mistune
+import yt_dlp
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from app.config import CONFIG_DIR, load_config
+from app.downloader import download_video, get_video_info
+
+app = FastAPI()
+
+STATIC_DIR = Path(__file__).parent / "static" / "public"
+APP_VERSION = os.getenv("APP_VERSION", "dev")
+
+
+class DownloadRequest(BaseModel):
+    url: str
+
+
+@app.get("/")
+async def root():
+    cfg = load_config()
+    html = (STATIC_DIR / "index.html").read_text()
+    html = html.replace("__VERSION__", APP_VERSION)
+    html = html.replace("__SITE_TITLE__", cfg.site_title)
+    html = html.replace("__SUBTITLE__", cfg.subtitle)
+    html = html.replace("__ACCENT_COLOR__", cfg.accent_color)
+    html = html.replace("__PASTE_HIDDEN__", "" if cfg.show_paste_button else " hidden")
+    disclaimer_path = CONFIG_DIR / "disclaimer.md"
+    if disclaimer_path.exists():
+        disclaimer_notice = (
+            '<p class="disclaimer-notice">'
+            'By downloading, you agree to our '
+            '<a href="/legal-disclaimer" target="_blank" rel="noopener">Legal Disclaimer</a>.'
+            '</p>'
+        )
+    else:
+        disclaimer_notice = ""
+    html = html.replace("__DISCLAIMER_NOTICE__", disclaimer_notice)
+    dev_banner = (
+        f'<p class="dev-banner">'
+        f'{APP_VERSION} &bull; '
+        f'<a href="https://github.com/nikolainyegaard/multi-downloader" target="_blank" rel="noopener">GitHub</a>'
+        f'</p>'
+    )
+    html = html.replace("__DEV_BANNER__", dev_banner)
+    if cfg.kofi_username:
+        kofi_script = (
+            f"<script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>\n"
+            f"  <script>\n"
+            f"    kofiWidgetOverlay.draw('{cfg.kofi_username}', {{\n"
+            f"      'type': 'floating-chat',\n"
+            f"      'floating-chat.donateButton.text': 'Support me',\n"
+            f"      'floating-chat.donateButton.background-color': '#00b9fe',\n"
+            f"      'floating-chat.donateButton.text-color': '#fff'\n"
+            f"    }});\n"
+            f"  </script>"
+        )
+    else:
+        kofi_script = ""
+    html = html.replace("__KOFI_SCRIPT__", kofi_script)
+    return HTMLResponse(html)
+
+
+@app.get("/legal-disclaimer")
+async def legal_disclaimer():
+    disclaimer_path = CONFIG_DIR / "disclaimer.md"
+    if not disclaimer_path.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+    content = disclaimer_path.read_text().strip()
+    if not content:
+        raise HTTPException(status_code=404, detail="Not found")
+    cfg = load_config()
+    rendered = mistune.html(content)
+    page = (
+        '<!DOCTYPE html>'
+        '<html lang="en">'
+        '<head>'
+        '<meta charset="UTF-8" />'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
+        '<title>Legal Disclaimer</title>'
+        f'<link rel="stylesheet" href="/static/style.css?v={APP_VERSION}" />'
+        f'<style>:root {{ --accent: {cfg.accent_color}; --accent-hover: color-mix(in srgb, {cfg.accent_color} 85%, black); }}</style>'
+        '</head>'
+        '<body>'
+        '<div class="container legal">'
+        f'{rendered}'
+        '</div>'
+        '</body>'
+        '</html>'
+    )
+    return HTMLResponse(page)
+
+
+@app.post("/api/info")
+async def info(req: DownloadRequest):
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=422, detail="URL is required")
+    try:
+        data = await asyncio.to_thread(get_video_info, url)
+        return data
+    except yt_dlp.utils.DownloadError as e:
+        msg = str(e).removeprefix("ERROR: ")
+        raise HTTPException(status_code=400, detail=msg)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/download")
+async def download(req: DownloadRequest):
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=422, detail="URL is required")
+
+    tmpdir = tempfile.mkdtemp()
+    try:
+        filepath = await asyncio.to_thread(download_video, url, tmpdir)
+    except yt_dlp.utils.DownloadError as e:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        msg = str(e).removeprefix("ERROR: ")
+        raise HTTPException(status_code=400, detail=msg)
+    except Exception as e:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not os.path.exists(filepath):
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail="Download produced no output file")
+
+    filename = os.path.basename(filepath)
+    filesize = os.path.getsize(filepath)
+    encoded_name = quote(filename, safe="")
+
+    async def stream_and_cleanup():
+        try:
+            with open(filepath, "rb") as f:
+                while chunk := f.read(1024 * 1024):
+                    yield chunk
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    return StreamingResponse(
+        stream_and_cleanup(),
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}",
+            "Content-Length": str(filesize),
+        },
+    )
+
+
+# Static files -- mounted last so API routes take priority
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
