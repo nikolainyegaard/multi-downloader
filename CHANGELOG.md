@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-12
+
 ### Added
 - Admin panel via second container from the same image (`ADMIN_MODE=1`): branding (site title, subtitle, accent color), content (paste button toggle, Ko-fi widget), and a reset-to-defaults action
 - `GET /api/config`, `POST /api/config`, `POST /api/config/reset` endpoints (admin mode only)
@@ -45,5 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docker-compose.yml` for deployment behind Caddy reverse proxy
 - `BUILD_VERSION` build arg baked into image as `APP_VERSION` env var
 
-[Unreleased]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nikolainyegaard/multi-downloader/releases/tag/v0.1.0
