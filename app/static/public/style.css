@@ -59,8 +59,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
+  justify-content: flex-start;
+  padding: 48px 16px;
   min-height: 100dvh;
 }
 
@@ -116,6 +116,10 @@ h1 {
   border-color: var(--accent);
 }
 
+.input-row.invalid {
+  border-color: var(--error);
+}
+
 #url-input {
   flex: 1;
   background: transparent;
@@ -129,6 +133,25 @@ h1 {
 
 #url-input::placeholder {
   color: var(--text-muted);
+}
+
+.clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--error);
+  padding: 0 10px;
+  height: 100%;
+  min-height: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+
+.clear-btn:hover {
+  opacity: 1;
 }
 
 #paste-btn {
@@ -237,7 +260,8 @@ h1 {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 150px;
+  display: inline-flex;
+  flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -252,11 +276,9 @@ h1 {
 .quality-menu.open {
   max-height: 320px;
   opacity: 1;
-  overflow-y: auto;
 }
 
 .quality-option {
-  width: 100%;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -264,7 +286,7 @@ h1 {
   font-family: inherit;
   padding: 10px 14px;
   cursor: pointer;
-  text-align: left;
+  text-align: right;
   transition: background 0.1s, color 0.1s;
 }
 

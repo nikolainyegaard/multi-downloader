@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quality selector: split download button with a chevron-triggered dropdown listing the actual available resolutions (e.g. 1080p, 720p, 480p); defaults to the highest available
 - Download progress percentage shown in the button during file transfer (uses `Content-Length` from the streaming response)
 - Preview metadata fetch now triggers on keystroke with a 600ms debounce, covering typing and native paste
+- Invalid URL validation on the input field: red border and a red X button appear for non-empty input that is not a valid http/https URL; clicking X clears the field
+- Page content is top-aligned rather than vertically centered
 
 ### Changed
 - yt-dlp now uses a browser-like User-Agent, socket timeout (30s), retry limits (3 retries, 5 fragment retries), and a short inter-request sleep (0.5s) to reduce rate-limit exposure

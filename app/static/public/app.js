@@ -78,6 +78,8 @@ function syncThemeButton() {
 // ── Download UI ───────────────────────────────────────────────────────────────
 
 const urlInput       = document.getElementById('url-input');
+const inputRow       = urlInput.closest('.input-row');
+const clearBtn       = document.getElementById('clear-btn');
 const pasteBtn       = document.getElementById('paste-btn');
 const downloadBtn    = document.getElementById('download-btn');
 const downloadWrap   = document.getElementById('download-wrap');
@@ -103,8 +105,7 @@ let currentQualities   = []; // [{label, height}, ...]
 let selectedQualityIdx = 0;
 
 function buildDlLabelText() {
-  const q = currentQualities[selectedQualityIdx];
-  return q ? `\u2193 Download \u2022 ${q.label}` : '\u2193 Download';
+  return '\u2193 Download';
 }
 
 function renderQualities(qualities) {
@@ -180,6 +181,7 @@ pasteBtn?.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
     urlInput.value = text.trim();
+    setInputState(urlInput.value);
     clearStatus();
     urlInput.focus();
     if (urlInput.value) triggerPreview(urlInput.value);
@@ -189,11 +191,19 @@ pasteBtn?.addEventListener('click', async () => {
   }
 });
 
+clearBtn.addEventListener('click', () => {
+  urlInput.value = '';
+  setInputState('');
+  hidePreview();
+  urlInput.focus();
+});
+
 // Debounced preview on every input event (typing, native paste, cut, etc.)
 urlInput.addEventListener('input', () => {
   const url = urlInput.value.trim();
+  setInputState(url);
   clearPreviewDebounce();
-  if (!url) {
+  if (!url || !isValidUrl(url)) {
     hidePreview();
     return;
   }
@@ -229,6 +239,7 @@ downloadBtn.addEventListener('click', async () => {
 
     // Server confirmed; clear the input immediately, keep the preview visible
     urlInput.value = '';
+    setInputState('');
 
     const filename = filenameFromResponse(response) || 'video.mp4';
     const blob = await readWithProgress(response);
@@ -313,6 +324,7 @@ function hidePreview() {
 function resetAll() {
   clearStatus();
   hidePreview();
+  setInputState('');
   renderQualities([]);
 }
 
@@ -374,6 +386,21 @@ function triggerDownload(blob, filename) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+}
+
+function setInputState(url) {
+  const invalid = url.length > 0 && !isValidUrl(url);
+  inputRow.classList.toggle('invalid', invalid);
+  clearBtn.hidden = !invalid;
+}
+
+function isValidUrl(str) {
+  try {
+    const u = new URL(str);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function formatDuration(seconds) {
