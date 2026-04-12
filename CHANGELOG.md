@@ -10,11 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `bgutil-ytdlp-pot-provider` sidecar: generates YouTube Proof of Origin tokens without a logged-in account, bypassing YouTube bot detection for public use
 - Per-domain concurrency limit (semaphore, max 2) on `/api/info` and `/api/download` to avoid hammering a single platform
+- Quality selector: split download button with a chevron-triggered dropdown listing the actual available resolutions (e.g. 1080p, 720p, 480p); defaults to the highest available
+- Download progress percentage shown in the button during file transfer (uses `Content-Length` from the streaming response)
+- Preview metadata fetch now triggers on keystroke with a 600ms debounce, covering typing and native paste
 
 ### Changed
 - yt-dlp now uses a browser-like User-Agent, socket timeout (30s), retry limits (3 retries, 5 fragment retries), and a short inter-request sleep (0.5s) to reduce rate-limit exposure
 - `docker-compose.yml`: added `bgutil-provider` service and `downloader_net` internal network; downloader containers attach to both `caddy_net` and `downloader_net`
 - Minimum yt-dlp version pinned to `2025.05.22` (required for built-in POT provider framework)
+- `/api/info` response now includes a `qualities` array (`label`, `height`) derived from yt-dlp format info
+- `/api/download` now accepts an optional `height` field; omitting it (or passing `null`) selects the best available quality
 
 ## [0.2.0] - 2026-04-12
 

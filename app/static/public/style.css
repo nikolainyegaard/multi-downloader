@@ -154,9 +154,16 @@ h1 {
   background: rgba(59, 130, 246, 0.2);
 }
 
-/* Download button */
+/* Download button -- split button wrapper */
+.download-wrap {
+  position: relative;
+  display: flex;
+  border-radius: var(--radius-sm);
+  min-height: 54px;
+}
+
 #download-btn {
-  width: 100%;
+  flex: 1;
   background: var(--accent);
   color: #fff;
   border: none;
@@ -169,8 +176,12 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, opacity 0.15s, border-radius 0.1s;
   min-height: 54px;
+}
+
+.download-wrap.has-quality #download-btn {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
 #download-btn:hover:not(:disabled) {
@@ -180,6 +191,90 @@ h1 {
 #download-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Quality toggle (right side of split button) */
+#quality-toggle {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+#quality-toggle:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+#quality-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quality-chevron {
+  transition: transform 0.2s ease;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+#quality-toggle[aria-expanded="true"] .quality-chevron {
+  transform: rotate(180deg);
+}
+
+/* Quality dropdown menu */
+.quality-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.22s ease, opacity 0.15s ease;
+  z-index: 10;
+}
+
+.quality-menu.open {
+  max-height: 320px;
+  opacity: 1;
+  overflow-y: auto;
+}
+
+.quality-option {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-family: inherit;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.quality-option:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.quality-option.active {
+  color: var(--accent);
 }
 
 /* Spinner */

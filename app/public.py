@@ -31,6 +31,7 @@ def _domain(url: str) -> str:
 
 class DownloadRequest(BaseModel):
     url: str
+    height: int | None = None
 
 
 @app.get("/")
@@ -147,7 +148,7 @@ async def download(req: DownloadRequest):
     tmpdir = tempfile.mkdtemp()
     try:
         async with _domain_semaphores[_domain(url)]:
-            filepath = await asyncio.to_thread(download_video, url, tmpdir)
+            filepath = await asyncio.to_thread(download_video, url, tmpdir, req.height)
     except yt_dlp.utils.DownloadError as e:
         shutil.rmtree(tmpdir, ignore_errors=True)
         msg = str(e).removeprefix("ERROR: ")

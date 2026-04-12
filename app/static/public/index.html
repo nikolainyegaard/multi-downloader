@@ -46,7 +46,17 @@
         <button id="paste-btn" type="button"__PASTE_HIDDEN__>Paste</button>
       </div>
 
-      <button id="download-btn" type="button">↓ Download</button>
+      <div class="download-wrap" id="download-wrap">
+        <button id="download-btn" type="button">
+          <span class="spinner dl-spinner" hidden></span>
+          <span id="dl-label">↓ Download</span>
+        </button>
+        <button id="quality-toggle" type="button" hidden aria-haspopup="listbox" aria-expanded="false">
+          <span id="quality-label">HD</span>
+          <svg class="quality-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="quality-menu" id="quality-menu" role="listbox" aria-hidden="true"></div>
+      </div>
 
       <div id="status" role="status" aria-live="polite"></div>
     </div>

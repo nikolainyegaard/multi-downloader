@@ -50,10 +50,34 @@ def _safe(value: str) -> str:
     return re.sub(r"[^\w\-]", "", value) or "unknown"
 
 
+def _extract_qualities(info: dict) -> list[dict]:
+    """
+    Return available video quality options from yt-dlp format info.
+    Each entry: {label, height}. Sorted best-first by height.
+    """
+    formats = info.get("formats") or []
+
+    video_fmts = [
+        f for f in formats
+        if f.get("vcodec") not in (None, "none") and (f.get("height") or 0) > 0
+    ]
+    if not video_fmts:
+        return []
+
+    # Best format per height (highest tbr wins).
+    by_height: dict[int, dict] = {}
+    for f in video_fmts:
+        h = f["height"]
+        if h not in by_height or (f.get("tbr") or 0) > (by_height[h].get("tbr") or 0):
+            by_height[h] = f
+
+    return [{"label": f"{h}p", "height": h} for h in sorted(by_height.keys(), reverse=True)]
+
+
 def get_video_info(url: str) -> dict:
     """
     Fetch metadata for a URL without downloading.
-    Returns a dict with title, thumbnail, duration, uploader.
+    Returns a dict with title, thumbnail, duration, uploader, qualities.
     Raises yt_dlp.utils.DownloadError on failure.
     """
     opts = {
@@ -67,21 +91,31 @@ def get_video_info(url: str) -> dict:
             "thumbnail": info.get("thumbnail"),
             "duration": info.get("duration"),  # seconds, may be None
             "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
+            "qualities": _extract_qualities(info),
         }
 
 
-def download_video(url: str, output_dir: str) -> str:
+def download_video(url: str, output_dir: str, height: int | None = None) -> str:
     """
     Download a video to output_dir using yt-dlp.
+    height: cap the video resolution (e.g. 720 for 720p); None means best available.
     Returns the absolute path of the downloaded file.
     Raises yt_dlp.utils.DownloadError on failure.
     """
+    if height is not None:
+        fmt = (
+            f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]"
+            f"/best[height<={height}][ext=mp4]"
+            f"/best[height<={height}]"
+        )
+    else:
+        fmt = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+
     opts = {
         **_COMMON_OPTS,
         # Use a simple unique name during download; renamed to the final format after.
         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
-        # Prefer pre-muxed MP4; fall back to best available.
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "format": fmt,
         "merge_output_format": "mp4",
         # Remux single-stream downloads to MP4 without re-encoding.
         "remux_video": "mp4",

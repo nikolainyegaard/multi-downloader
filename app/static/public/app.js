@@ -80,6 +80,12 @@ function syncThemeButton() {
 const urlInput       = document.getElementById('url-input');
 const pasteBtn       = document.getElementById('paste-btn');
 const downloadBtn    = document.getElementById('download-btn');
+const downloadWrap   = document.getElementById('download-wrap');
+const dlSpinner      = downloadBtn.querySelector('.dl-spinner');
+const dlLabel        = document.getElementById('dl-label');
+const qualityToggle  = document.getElementById('quality-toggle');
+const qualityLabel   = document.getElementById('quality-label');
+const qualityMenu    = document.getElementById('quality-menu');
 const statusEl       = document.getElementById('status');
 const previewEl      = document.getElementById('preview');
 const previewLoading = document.getElementById('preview-loading');
@@ -88,7 +94,80 @@ const previewThumb   = document.getElementById('preview-thumb');
 const previewTitle   = document.getElementById('preview-title');
 const previewMeta    = document.getElementById('preview-meta');
 
-let previewController = null; // AbortController for in-flight /api/info requests
+let previewController    = null; // AbortController for in-flight /api/info requests
+let previewDebounceTimer = null;
+
+// ── Quality state ─────────────────────────────────────────────────────────────
+
+let currentQualities   = []; // [{label, height}, ...]
+let selectedQualityIdx = 0;
+
+function buildDlLabelText() {
+  const q = currentQualities[selectedQualityIdx];
+  return q ? `\u2193 Download \u2022 ${q.label}` : '\u2193 Download';
+}
+
+function renderQualities(qualities) {
+  currentQualities   = qualities || [];
+  selectedQualityIdx = 0;
+
+  qualityMenu.innerHTML = '';
+  currentQualities.forEach((q, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'quality-option' + (i === 0 ? ' active' : '');
+    btn.setAttribute('role', 'option');
+    btn.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+    btn.dataset.idx = String(i);
+    btn.textContent = q.label;
+    qualityMenu.appendChild(btn);
+  });
+
+  const multi = currentQualities.length > 1;
+  qualityToggle.hidden = !multi;
+  downloadWrap.classList.toggle('has-quality', multi);
+
+  dlLabel.textContent = buildDlLabelText();
+  qualityLabel.textContent = currentQualities[0]?.label ?? 'HD';
+}
+
+function selectQuality(idx) {
+  selectedQualityIdx = idx;
+  qualityMenu.querySelectorAll('.quality-option').forEach((btn, i) => {
+    btn.classList.toggle('active', i === idx);
+    btn.setAttribute('aria-selected', String(i === idx));
+  });
+  dlLabel.textContent = buildDlLabelText();
+  qualityLabel.textContent = currentQualities[idx]?.label ?? 'HD';
+  closeQualityMenu();
+}
+
+// ── Quality menu ──────────────────────────────────────────────────────────────
+
+function openQualityMenu() {
+  qualityMenu.classList.add('open');
+  qualityToggle.setAttribute('aria-expanded', 'true');
+  qualityMenu.setAttribute('aria-hidden', 'false');
+}
+
+function closeQualityMenu() {
+  qualityMenu.classList.remove('open');
+  qualityToggle.setAttribute('aria-expanded', 'false');
+  qualityMenu.setAttribute('aria-hidden', 'true');
+}
+
+qualityToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  qualityMenu.classList.contains('open') ? closeQualityMenu() : openQualityMenu();
+});
+
+qualityMenu.addEventListener('click', (e) => {
+  const btn = e.target.closest('.quality-option');
+  if (btn) selectQuality(Number(btn.dataset.idx));
+});
+
+document.addEventListener('click', () => closeQualityMenu());
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeQualityMenu(); });
 
 // ── Paste ─────────────────────────────────────────────────────────────────────
 
@@ -110,18 +189,15 @@ pasteBtn?.addEventListener('click', async () => {
   }
 });
 
-// Native paste (keyboard shortcut / right-click)
-urlInput.addEventListener('paste', () => {
-  // Let the paste event settle before reading the value
-  setTimeout(() => {
-    const url = urlInput.value.trim();
-    if (url) triggerPreview(url);
-  }, 0);
-});
-
-// Clear preview when the field is emptied manually
+// Debounced preview on every input event (typing, native paste, cut, etc.)
 urlInput.addEventListener('input', () => {
-  if (!urlInput.value.trim()) hidePreview();
+  const url = urlInput.value.trim();
+  clearPreviewDebounce();
+  if (!url) {
+    hidePreview();
+    return;
+  }
+  previewDebounceTimer = setTimeout(() => triggerPreview(url), 600);
 });
 
 // ── Download ──────────────────────────────────────────────────────────────────
@@ -137,11 +213,13 @@ downloadBtn.addEventListener('click', async () => {
   setLoading(true);
   clearStatus();
 
+  const height = currentQualities[selectedQualityIdx]?.height ?? null;
+
   try {
     const response = await fetch('/api/download', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, height }),
     });
 
     if (!response.ok) {
@@ -153,7 +231,7 @@ downloadBtn.addEventListener('click', async () => {
     urlInput.value = '';
 
     const filename = filenameFromResponse(response) || 'video.mp4';
-    const blob = await response.blob();
+    const blob = await readWithProgress(response);
 
     triggerDownload(blob, filename);
     showStatus('success', 'Download started!');
@@ -174,6 +252,7 @@ urlInput.addEventListener('keydown', (e) => {
 
 function triggerPreview(url) {
   abortPreview();
+  closeQualityMenu();
   previewController = new AbortController();
 
   fetch('/api/info', {
@@ -189,7 +268,9 @@ function triggerPreview(url) {
       const parts = [];
       if (data.duration != null) parts.push(formatDuration(data.duration));
       if (data.uploader)         parts.push(data.uploader);
-      previewMeta.textContent = parts.join(' · ');
+      previewMeta.textContent = parts.join(' \u00b7 ');
+
+      renderQualities(data.qualities || []);
 
       if (data.thumbnail) {
         previewThumb.hidden = false;
@@ -213,7 +294,15 @@ function abortPreview() {
   previewController = null;
 }
 
+function clearPreviewDebounce() {
+  if (previewDebounceTimer) {
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = null;
+  }
+}
+
 function hidePreview() {
+  clearPreviewDebounce();
   abortPreview();
   previewEl.hidden = true;
   previewLoading.hidden = true;
@@ -224,15 +313,37 @@ function hidePreview() {
 function resetAll() {
   clearStatus();
   hidePreview();
+  renderQualities([]);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function setLoading(on) {
   downloadBtn.disabled = on;
-  downloadBtn.innerHTML = on
-    ? '<span class="spinner"></span> Downloading…'
-    : '↓ Download';
+  qualityToggle.disabled = on;
+  dlSpinner.hidden = !on;
+  dlLabel.textContent = on ? 'Downloading\u2026' : buildDlLabelText();
+}
+
+function showLoadingProgress(pct) {
+  dlLabel.textContent = `Downloading\u2026 ${pct}%`;
+}
+
+async function readWithProgress(response) {
+  const total  = parseInt(response.headers.get('Content-Length') || '0', 10);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let received = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (total > 0) showLoadingProgress(Math.round((received / total) * 100));
+  }
+
+  return new Blob(chunks);
 }
 
 function showStatus(type, msg) {
