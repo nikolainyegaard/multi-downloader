@@ -134,7 +134,6 @@ downloadBtn.addEventListener('click', async () => {
     return;
   }
 
-  abortPreview();
   setLoading(true);
   clearStatus();
 

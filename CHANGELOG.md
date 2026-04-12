@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System/Light/Dark theme toggle, fixed top-right; preference saved in `localStorage`; defaults to System (follows OS `prefers-color-scheme`); applies to the legal disclaimer page as well
 
 ### Changed
+- Downloaded files are now named `{service}-{uploader}-{id}.mp4` (e.g. `yt-LinusTechTips-dQw4w9WgXcQ.mp4`); common platforms use short tags (`yt`, `ig`, `tt`, `x`); unknown platforms fall back to the yt-dlp extractor name
+- Single-stream downloads are now remuxed to MP4 without re-encoding, closing the gap where a `best` fallback could produce a non-MP4 file
 - Static files moved from `app/static/` into `app/static/public/`; `app/static/admin/` added for admin UI
 - `main.py` is now a 4-line entry point; logic split into `public.py` and `admin.py`
 - `docker-compose.yml` updated: two services (`multi-downloader` + `multi-downloader-admin`) sharing a bind-mount config volume (`./config`), both attached to `caddy_net`; `volumes:` section removed
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Preview card no longer appears as an empty box while metadata is loading; the card stays hidden until title, meta, and thumbnail data have been received
+- Clicking Download before the preview loads no longer prevents the preview from appearing; the metadata request now runs in parallel with the download
 
 ## [0.1.0] - 2026-04-11
 
