@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import CONFIG_DIR, Config, load_config, save_config
+from app.config import CONFIG_DIR, LOGS_DIR, Config, load_config, save_config
 
 app = FastAPI()
 
@@ -19,9 +19,9 @@ APP_VERSION = os.getenv("APP_VERSION", "dev")
 # Dev-mode file logger: one log file per container run, written to the config volume
 _log: logging.Logger | None = None
 if APP_VERSION.startswith("dev"):
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
     _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    _log_path = CONFIG_DIR / f"admin_debug_{_ts}.log"
+    _log_path = LOGS_DIR / f"admin_debug_{_ts}.log"
     _handler = logging.FileHandler(_log_path)
     _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     _log = logging.getLogger("admin_debug")

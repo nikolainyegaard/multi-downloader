@@ -20,6 +20,13 @@ Create a folder on your server and drop in a `docker-compose.yml`.
 
 ```yaml
 services:
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: bgutil-provider
+    restart: unless-stopped
+    networks:
+      - downloader_net
+
   multi-downloader:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
@@ -28,12 +35,26 @@ services:
       TZ: "Europe/Oslo"
     ports:
       - "127.0.0.1:8000:8000"
+    networks:
+      - downloader_net
+    depends_on:
+      - bgutil-provider
+
+networks:
+  downloader_net:
 ```
 
 **With admin panel, no Caddy** (two containers, different host ports):
 
 ```yaml
 services:
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: bgutil-provider
+    restart: unless-stopped
+    networks:
+      - downloader_net
+
   multi-downloader:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
@@ -41,9 +62,13 @@ services:
     environment:
       TZ: "Europe/Oslo"
     volumes:
-      - ./config:/app/config:ro
+      - ./data:/app/data:ro
     ports:
       - "127.0.0.1:8000:8000"
+    networks:
+      - downloader_net
+    depends_on:
+      - bgutil-provider
 
   multi-downloader-admin:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
@@ -53,9 +78,16 @@ services:
       TZ: "Europe/Oslo"
       ADMIN_MODE: "1"
     volumes:
-      - ./config:/app/config:rw
+      - ./data:/app/data:rw
     ports:
       - "127.0.0.1:8001:8000"
+    networks:
+      - downloader_net
+    depends_on:
+      - bgutil-provider
+
+networks:
+  downloader_net:
 ```
 
 Public site at `http://localhost:8000`, admin at `http://localhost:8001`.
@@ -64,6 +96,13 @@ Public site at `http://localhost:8000`, admin at `http://localhost:8001`.
 
 ```yaml
 services:
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: bgutil-provider
+    restart: unless-stopped
+    networks:
+      - downloader_net
+
   multi-downloader:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
@@ -71,11 +110,14 @@ services:
     environment:
       TZ: "Europe/Oslo"
     volumes:
-      - ./config:/app/config:ro
+      - ./data:/app/data:ro
     expose:
       - "8000"
     networks:
       - caddy_net
+      - downloader_net
+    depends_on:
+      - bgutil-provider
 
   multi-downloader-admin:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
@@ -85,15 +127,19 @@ services:
       TZ: "Europe/Oslo"
       ADMIN_MODE: "1"
     volumes:
-      - ./config:/app/config:rw
+      - ./data:/app/data:rw
     expose:
       - "8000"
     networks:
       - caddy_net
+      - downloader_net
+    depends_on:
+      - bgutil-provider
 
 networks:
   caddy_net:
     external: true
+  downloader_net:
 ```
 
 ### 2. Start the containers
@@ -165,11 +211,11 @@ Settings available in the admin UI:
 | Show Paste button | Toggle the Paste button on/off |
 | Ko-fi username | Your Ko-fi username to show a support widget; leave empty to disable |
 
-Settings are stored in `/app/config/config.json` on the shared Docker volume. The public container mounts the volume read-only.
+Settings are stored in `./data/config/config.json` on the shared Docker volume. The public container mounts the volume read-only.
 
 ### Legal disclaimer
 
-To show a "By downloading, you agree to our Legal Disclaimer" notice on the public site and serve the disclaimer at `/legal-disclaimer`, create a file called `disclaimer.md` in your `./config/` directory and write your disclaimer in Markdown. Delete the file to remove the notice.
+To show a "By downloading, you agree to our Legal Disclaimer" notice on the public site and serve the disclaimer at `/legal-disclaimer`, create a file at `./data/legal/disclaimer.md` and write your disclaimer in Markdown. Delete the file to remove the notice.
 
 ---
 
@@ -182,7 +228,7 @@ Environment variables in `docker-compose.yml`:
 | `TZ` | `UTC` | Container timezone for log timestamps, e.g. `Europe/Oslo`. |
 | `WEB_PORT` | `8000` | Port the app listens on inside the container. |
 | `ADMIN_MODE` | unset | Set to `1` to run the container as the admin panel instead of the public site. |
-| `CONFIG_DIR` | `/app/config` | Path to the config volume mount point. |
+| `DATA_DIR` | `/app/data` | Path to the data volume mount point inside the container. |
 
 ---
 

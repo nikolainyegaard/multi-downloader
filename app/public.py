@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import CONFIG_DIR, load_config
+from app.config import LEGAL_DIR, load_config
 from app.downloader import download_video, get_video_info
 
 app = FastAPI()
@@ -43,7 +43,7 @@ async def root():
     html = html.replace("__SUBTITLE__", cfg.subtitle)
     html = html.replace("__ACCENT_COLOR__", cfg.accent_color)
     html = html.replace("__PASTE_HIDDEN__", "" if cfg.show_paste_button else " hidden")
-    disclaimer_path = CONFIG_DIR / "disclaimer.md"
+    disclaimer_path = LEGAL_DIR / "disclaimer.md"
     if disclaimer_path.exists():
         disclaimer_notice = (
             '<p class="disclaimer-notice">'
@@ -81,7 +81,7 @@ async def root():
 
 @app.get("/legal-disclaimer")
 async def legal_disclaimer():
-    disclaimer_path = CONFIG_DIR / "disclaimer.md"
+    disclaimer_path = LEGAL_DIR / "disclaimer.md"
     if not disclaimer_path.exists():
         raise HTTPException(status_code=404, detail="Not found")
     content = disclaimer_path.read_text().strip()

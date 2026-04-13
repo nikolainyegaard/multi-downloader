@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minimum yt-dlp version pinned to `2025.05.22` (required for built-in POT provider framework)
 - `/api/info` response now includes a `qualities` array (`label`, `height`) derived from yt-dlp format info
 - `/api/download` now accepts an optional `height` field; omitting it (or passing `null`) selects the best available quality
+- Data directory restructured: flat `./config` bind mount replaced by `./data` with typed subdirectories (`config/`, `legal/`, `logs/`); `CONFIG_DIR` env var replaced by `DATA_DIR` (default `/app/data`); `disclaimer.md` moves from `config/` to `legal/`; dev-mode admin logs move from `config/` to `logs/`
+- On-startup migration: if the old `/app/config` path is mounted and new-path files are absent, `config.json` and `disclaimer.md` are copied to their new locations automatically; old files are left in place until the old bind mount is removed
+
+  **Breaking change for existing deployments:** update the bind mount in `docker-compose.yml` from `./config:/app/config` to `./data:/app/data`. To use the automatic migration, temporarily add the old mount alongside the new one on first boot, then remove it.
 
 ## [0.2.0] - 2026-04-12
 
