@@ -7,57 +7,207 @@
   <link rel="stylesheet" href="/static/style.css?v=__VERSION__" />
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Admin</h1>
-      <p class="subtitle">multi-downloader settings</p>
-    </header>
+  <div class="layout">
 
-    <form id="config-form">
-      <div class="card">
-        <h2 class="section-title">Branding</h2>
-
-        <div class="field">
-          <label for="site_title">Site title</label>
-          <input type="text" id="site_title" name="site_title" />
-        </div>
-
-        <div class="field">
-          <label for="subtitle">Subtitle</label>
-          <input type="text" id="subtitle" name="subtitle" />
-        </div>
-
-        <div class="field">
-          <label for="accent_color">Accent color</label>
-          <input type="color" id="accent_color" name="accent_color" />
-        </div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="sidebar-name">multi-downloader</span>
+        <span class="sidebar-version">__VERSION__</span>
       </div>
+      <nav class="nav">
+        <div class="nav-group">
+          <span class="nav-label">Site</span>
+          <button class="nav-item active" data-section="branding">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+            Branding
+          </button>
+          <button class="nav-item" data-section="content">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            Content
+          </button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-label">Analytics</span>
+          <button class="nav-item" data-section="statistics">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Statistics
+          </button>
+          <button class="nav-item" data-section="logs">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Logs
+          </button>
+        </div>
+        <div class="nav-group nav-group--end">
+          <button class="nav-item nav-item--danger" data-section="danger">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Danger zone
+          </button>
+        </div>
+      </nav>
+    </aside>
 
-      <div class="card">
-        <h2 class="section-title">Content</h2>
+    <!-- Main scroll area -->
+    <div class="main-scroll">
+      <main class="main">
 
-        <div class="field field--row">
-          <label for="show_paste_button">Show Paste button</label>
-          <input type="checkbox" id="show_paste_button" name="show_paste_button" />
+        <!-- Disclaimer banner -->
+        <div id="banner-disclaimer" class="banner banner--warning" hidden>
+          <div class="banner-body">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>No legal disclaimer configured. <a href="/disclaimer-guide" target="_blank" rel="noopener">Setup guide</a></span>
+          </div>
+          <button id="dismiss-disclaimer" class="banner-dismiss">Don't show again</button>
         </div>
 
-        <div class="field">
-          <label for="kofi_username">Ko-fi username</label>
-          <input type="text" id="kofi_username" name="kofi_username" placeholder="Leave empty to disable" />
-        </div>
-      </div>
+        <!-- Section: Branding -->
+        <section id="section-branding" class="section">
+          <div class="section-head">
+            <h1>Branding</h1>
+            <p>Control how the public site looks and is identified in browsers.</p>
+          </div>
 
-      <div id="save-status" role="status" aria-live="polite"></div>
+          <div class="branding-grid">
+            <div class="card">
+              <h2 class="card-title">Identity</h2>
+              <div class="field">
+                <label for="site_title">Site title</label>
+                <span class="field-hint">Shown as the heading on the public page</span>
+                <input type="text" id="site_title" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="browser_title">Browser title</label>
+                <span class="field-hint">Browser tab title; falls back to site title when empty</span>
+                <input type="text" id="browser_title" autocomplete="off" placeholder="Same as site title" />
+              </div>
+              <div class="field">
+                <label for="subtitle">Subtitle</label>
+                <input type="text" id="subtitle" autocomplete="off" />
+              </div>
+            </div>
 
-      <button id="save-btn" type="submit">Save</button>
-    </form>
+            <div class="card">
+              <h2 class="card-title">Page header</h2>
+              <p class="card-desc">Choose what appears as the heading on the public page. Logo padding is trimmed automatically. Must be horizontal or square (max 5:1 ratio); scaled to fit within 480x160px.</p>
+              <div class="radio-group">
+                <label class="radio-option">
+                  <input type="radio" name="header_mode" value="title" />
+                  <span class="radio-label">Title text</span>
+                </label>
+                <label class="radio-option">
+                  <input type="radio" name="header_mode" value="logo" />
+                  <span class="radio-label">Logo image</span>
+                </label>
+              </div>
+              <span class="field-error" id="header-mode-error" hidden>Upload and confirm a logo before selecting this option.</span>
+              <div id="logo-state" class="asset-state"></div>
+            </div>
 
-    <div class="card card--danger">
-      <h2 class="section-title">Danger zone</h2>
-      <p class="danger-desc">Reset all settings to defaults.</p>
-      <button id="reset-btn" type="button">Reset to defaults</button>
+            <div class="card">
+              <h2 class="card-title">Accent color</h2>
+              <div class="color-row">
+                <input type="color" id="accent_color" />
+                <input type="text" id="accent_hex" class="hex-input" maxlength="7" spellcheck="false" />
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">Favicon</h2>
+              <p class="card-desc">Browser tab and bookmark icon. Center-cropped to square; stored as 32x32 and 180x180 PNG.</p>
+              <div id="favicon-state" class="asset-state"></div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Section: Content -->
+        <section id="section-content" class="section" hidden>
+          <div class="section-head">
+            <h1>Content</h1>
+            <p>Configure UI elements and third-party integrations.</p>
+          </div>
+
+          <div class="content-layout">
+            <div class="card">
+              <h2 class="card-title">UI options</h2>
+              <div class="toggle-row">
+                <div>
+                  <span class="toggle-label">Paste button</span>
+                  <span class="toggle-desc">Show the Paste button in the URL input row</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="show_paste_button" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">Ko-fi</h2>
+              <div class="toggle-row">
+                <div>
+                  <span class="toggle-label">Enable widget</span>
+                  <span class="toggle-desc">Show a floating Ko-fi donation button on the public page</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="kofi_enabled" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div id="kofi-username-row" class="field" hidden>
+                <label for="kofi_username">Username <span class="field-required-mark">*</span></label>
+                <input type="text" id="kofi_username" autocomplete="off" placeholder="yourname" />
+                <span class="field-error" id="kofi-username-error" hidden>Required</span>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Section: Statistics -->
+        <section id="section-statistics" class="section" hidden>
+          <div class="section-head">
+            <h1>Statistics</h1>
+            <p>Download activity and platform breakdown.</p>
+          </div>
+          <div id="stats-body"></div>
+        </section>
+
+        <!-- Section: Logs -->
+        <section id="section-logs" class="section" hidden>
+          <div class="section-head">
+            <h1>Request logs</h1>
+            <p>Every API call logged with IP, country, platform, and outcome.</p>
+          </div>
+          <div id="logs-body"></div>
+        </section>
+
+        <!-- Section: Danger -->
+        <section id="section-danger" class="section" hidden>
+          <div class="section-head">
+            <h1>Danger zone</h1>
+            <p>Irreversible actions.</p>
+          </div>
+
+          <div class="card card--danger">
+            <h2 class="card-title">Reset to defaults</h2>
+            <p class="card-desc">Resets all settings in <code>config.json</code> to built-in defaults. Logo and favicon files on disk are not affected.</p>
+            <div class="section-actions section-actions--inline">
+              <button id="reset-btn" class="btn btn--danger">Reset to defaults</button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div class="save-bar" id="save-bar">
+      <button id="save-branding" class="btn btn--primary">Save changes</button>
+      <button id="save-content" class="btn btn--primary" hidden>Save changes</button>
     </div>
   </div>
+
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <script src="/static/app.js?v=__VERSION__"></script>
 </body>

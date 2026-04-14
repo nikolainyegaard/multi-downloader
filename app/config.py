@@ -10,9 +10,10 @@ LEGAL_DIR   = DATA_DIR / "legal"
 LOGS_DIR    = DATA_DIR / "logs"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
-_FIELDS = frozenset(
-    {"site_title", "subtitle", "accent_color", "show_paste_button", "custom_logo", "kofi_username"}
-)
+_FIELDS = frozenset({
+    "site_title", "subtitle", "accent_color", "show_paste_button",
+    "header_mode", "kofi_enabled", "kofi_username", "browser_title", "show_disclaimer_warning",
+})
 
 
 @dataclass
@@ -21,8 +22,11 @@ class Config:
     subtitle: str = "Paste a link, download the video"
     accent_color: str = "#3b82f6"
     show_paste_button: bool = True
-    custom_logo: bool = False
+    header_mode: str = "title"   # "title" | "logo"
+    kofi_enabled: bool = False
     kofi_username: str = ""
+    browser_title: str = ""
+    show_disclaimer_warning: bool = True
 
 
 def load_config() -> Config:

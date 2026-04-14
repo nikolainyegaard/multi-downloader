@@ -9,11 +9,11 @@ from urllib.parse import quote, urlparse
 import mistune
 import yt_dlp
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import LEGAL_DIR, load_config
+from app.config import CONFIG_DIR, LEGAL_DIR, load_config
 from app.downloader import download_video, get_video_info
 
 app = FastAPI()
@@ -29,6 +29,14 @@ def _domain(url: str) -> str:
     return urlparse(url).netloc or url
 
 
+def _logo_path() -> Path | None:
+    for ext in ("avif", "webp"):
+        p = CONFIG_DIR / f"logo.{ext}"
+        if p.exists():
+            return p
+    return None
+
+
 class DownloadRequest(BaseModel):
     url: str
     height: int | None = None
@@ -39,10 +47,39 @@ async def root():
     cfg = load_config()
     html = (STATIC_DIR / "index.html").read_text()
     html = html.replace("__VERSION__", APP_VERSION)
-    html = html.replace("__SITE_TITLE__", cfg.site_title)
-    html = html.replace("__SUBTITLE__", cfg.subtitle)
+
+    # Browser tab title
+    browser_title = cfg.browser_title if cfg.browser_title else cfg.site_title
+    html = html.replace("__BROWSER_TITLE__", browser_title)
+
     html = html.replace("__ACCENT_COLOR__", cfg.accent_color)
     html = html.replace("__PASTE_HIDDEN__", "" if cfg.show_paste_button else " hidden")
+
+    # Favicon links
+    if (CONFIG_DIR / "favicon-32.png").exists():
+        favicon_link = (
+            f'<link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico?v={APP_VERSION}" />\n  '
+            f'<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v={APP_VERSION}" />'
+        )
+    else:
+        favicon_link = ""
+    html = html.replace("__FAVICON_LINK__", favicon_link)
+
+    # Logo vs text title (mutually exclusive)
+    logo = _logo_path()
+    if cfg.header_mode == "logo" and logo:
+        header_content = (
+            f'<img src="/logo?v={APP_VERSION}" class="site-logo" alt="{cfg.site_title}" />\n'
+            f'      <p class="subtitle">{cfg.subtitle}</p>'
+        )
+    else:
+        header_content = (
+            f'<h1>{cfg.site_title}</h1>\n'
+            f'      <p class="subtitle">{cfg.subtitle}</p>'
+        )
+    html = html.replace("__HEADER_CONTENT__", header_content)
+
+    # Disclaimer notice
     disclaimer_path = LEGAL_DIR / "disclaimer.md"
     if disclaimer_path.exists():
         disclaimer_notice = (
@@ -54,6 +91,7 @@ async def root():
     else:
         disclaimer_notice = ""
     html = html.replace("__DISCLAIMER_NOTICE__", disclaimer_notice)
+
     dev_banner = (
         f'<p class="dev-banner">'
         f'{APP_VERSION} &bull; '
@@ -61,7 +99,8 @@ async def root():
         f'</p>'
     )
     html = html.replace("__DEV_BANNER__", dev_banner)
-    if cfg.kofi_username:
+
+    if cfg.kofi_enabled and cfg.kofi_username:
         kofi_script = (
             f"<script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>\n"
             f"  <script>\n"
@@ -76,7 +115,33 @@ async def root():
     else:
         kofi_script = ""
     html = html.replace("__KOFI_SCRIPT__", kofi_script)
+
     return HTMLResponse(html)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    path = CONFIG_DIR / "favicon-32.png"
+    if not path.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(str(path), media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png")
+async def apple_touch_icon():
+    path = CONFIG_DIR / "favicon-180.png"
+    if not path.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(str(path), media_type="image/png")
+
+
+@app.get("/logo")
+async def serve_logo():
+    logo = _logo_path()
+    if not logo:
+        raise HTTPException(status_code=404)
+    media = "image/avif" if logo.suffix == ".avif" else "image/webp"
+    return FileResponse(str(logo), media_type=media)
 
 
 @app.get("/legal-disclaimer")

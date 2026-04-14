@@ -84,6 +84,15 @@ h1 {
   color: var(--text);
 }
 
+.site-logo {
+  max-height: 64px;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
 .subtitle {
   margin-top: 4px;
   font-size: 0.9rem;
