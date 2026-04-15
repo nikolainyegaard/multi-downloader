@@ -5,6 +5,54 @@ let statsLoaded = false;
 let logsLoaded  = false;
 let logsPage    = 1;
 
+// ── Field defaults (mirrors config.py Config dataclass) ───────────────────────
+
+const FIELD_DEFAULTS = {
+  browser_title:     '',
+  subtitle:          'Paste a link, download the video',
+  site_title:        'multi-downloader',
+  accent_color:      '#3b82f6',
+  header_mode:       'title',
+  show_paste_button: true,
+  kofi_enabled:      false,
+  kofi_username:     '',
+};
+
+// ── Confirm dialog ────────────────────────────────────────────────────────────
+
+function showConfirm(message) {
+  return new Promise(resolve => {
+    const overlay  = document.getElementById('confirm-overlay');
+    const msgEl    = document.getElementById('confirm-message');
+    const okBtn    = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+    if (!overlay) { resolve(false); return; }
+
+    msgEl.textContent = message;
+    overlay.hidden = false;
+    okBtn.focus();
+
+    function finish(result) {
+      overlay.hidden = true;
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+
+    function onOk()      { finish(true);  }
+    function onCancel()  { finish(false); }
+    function onBackdrop(e) { if (e.target === overlay) finish(false); }
+    function onKey(e)    { if (e.key === 'Escape') finish(false); }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 async function apiGet(path) {
@@ -73,8 +121,10 @@ function populateForms() {
   setChecked('kofi_enabled',  cfg.kofi_enabled  ?? false);
   setVal('kofi_username',     cfg.kofi_username ?? '');
   updateKofiFields();
+  updateHeaderModeView();
   validateBranding();
   validateContent();
+  updateResetBtns();
 }
 
 function setVal(id, val) {
@@ -90,6 +140,56 @@ function setChecked(id, checked) {
 function setRadio(name, value) {
   const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
   if (el) el.checked = true;
+}
+
+// ── Per-field reset ───────────────────────────────────────────────────────────
+
+function getFormValue(field) {
+  switch (field) {
+    case 'header_mode':
+      return document.querySelector('input[name="header_mode"]:checked')?.value ?? 'title';
+    case 'show_paste_button':
+    case 'kofi_enabled':
+      return document.getElementById(field)?.checked ?? FIELD_DEFAULTS[field];
+    case 'accent_color':
+      return (document.getElementById(field)?.value ?? FIELD_DEFAULTS[field]).toLowerCase();
+    default:
+      return document.getElementById(field)?.value ?? FIELD_DEFAULTS[field];
+  }
+}
+
+function updateResetBtns() {
+  document.querySelectorAll('[data-reset-field]').forEach(btn => {
+    const field = btn.dataset.resetField;
+    if (!(field in FIELD_DEFAULTS)) return;
+    const def     = FIELD_DEFAULTS[field];
+    const current = getFormValue(field);
+    btn.disabled = String(current) === String(def);
+  });
+}
+
+function resetField(field) {
+  const def = FIELD_DEFAULTS[field];
+  switch (field) {
+    case 'header_mode':
+      setRadio('header_mode', def);
+      updateHeaderModeView();
+      break;
+    case 'show_paste_button':
+    case 'kofi_enabled':
+      setChecked(field, def);
+      if (field === 'kofi_enabled') updateKofiFields();
+      break;
+    case 'accent_color':
+      setVal('accent_color', def);
+      setVal('accent_hex', def);
+      break;
+    default:
+      setVal(field, def);
+  }
+  updateResetBtns();
+  validateBranding();
+  validateContent();
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -117,6 +217,17 @@ function showSection(name) {
 
 document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
   btn.addEventListener('click', () => showSection(btn.dataset.section));
+});
+
+// Sync reset button states whenever any form field changes
+document.querySelector('.main')?.addEventListener('input',  updateResetBtns);
+document.querySelector('.main')?.addEventListener('change', updateResetBtns);
+
+// Reset button clicks (event delegation)
+document.querySelector('.main')?.addEventListener('click', e => {
+  const btn = e.target.closest('[data-reset-field]');
+  if (!btn || btn.disabled) return;
+  resetField(btn.dataset.resetField);
 });
 
 // ── Disclaimer banner ─────────────────────────────────────────────────────────
@@ -159,8 +270,16 @@ function validateContent() {
   if (saveBtn) saveBtn.disabled = invalid;
 }
 
+function updateHeaderModeView() {
+  const mode = document.querySelector('input[name="header_mode"]:checked')?.value ?? 'title';
+  const titleRow = document.getElementById('header-title-row');
+  const logoRow  = document.getElementById('header-logo-row');
+  if (titleRow) titleRow.hidden = mode !== 'title';
+  if (logoRow)  logoRow.hidden  = mode !== 'logo';
+}
+
 document.querySelectorAll('input[name="header_mode"]').forEach(r =>
-  r.addEventListener('change', validateBranding)
+  r.addEventListener('change', () => { validateBranding(); updateHeaderModeView(); })
 );
 document.getElementById('kofi_username')?.addEventListener('input', validateContent);
 
@@ -223,7 +342,7 @@ function renderLogoState() {
   if (cfg.has_logo) {
     el.innerHTML = `
       <div class="asset-preview">
-        <img src="/logo?t=${Date.now()}" alt="Logo" class="asset-img" />
+        <img src="/api/logo?t=${Date.now()}" alt="Logo" class="asset-img" />
       </div>
       <div class="asset-actions">
         <label for="logo-replace-input" class="btn btn--secondary">Replace</label>
@@ -279,7 +398,7 @@ async function discardLogo() {
 }
 
 async function deleteLogo() {
-  if (!confirm('Delete the logo? This cannot be undone.')) return;
+  if (!await showConfirm('Delete the logo? This cannot be undone.')) return;
   try {
     await apiDelete('/api/logo');
     await reloadConfig();
@@ -372,7 +491,7 @@ async function discardFavicon() {
 }
 
 async function deleteFavicon() {
-  if (!confirm('Delete the favicon?')) return;
+  if (!await showConfirm('Delete the favicon? This cannot be undone.')) return;
   try {
     await apiDelete('/api/favicon');
     await reloadConfig();
@@ -669,7 +788,7 @@ function truncate(str, max) {
 // ── Danger section ────────────────────────────────────────────────────────────
 
 document.getElementById('reset-btn')?.addEventListener('click', async () => {
-  if (!confirm('Reset all settings to defaults?')) return;
+  if (!await showConfirm('Reset all settings to defaults? This cannot be undone.')) return;
   const btn = document.getElementById('reset-btn');
   btn.disabled = true;
   try {

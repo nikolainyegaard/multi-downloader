@@ -240,6 +240,15 @@ async def upload_logo(file: UploadFile = File(...)):
     return {"ok": True, "preview_url": "/api/logo/pending"}
 
 
+@app.get("/api/logo")
+async def serve_logo():
+    logo = _logo_path()
+    if not logo:
+        raise HTTPException(status_code=404)
+    media = "image/avif" if logo.suffix == ".avif" else "image/webp"
+    return FileResponse(str(logo), media_type=media)
+
+
 @app.get("/api/logo/pending")
 async def logo_pending():
     p = _logo_pending_path()

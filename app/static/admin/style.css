@@ -505,28 +505,164 @@ input[type="color"] {
   color: var(--text);
 }
 
-/* ── Branding layout ─────────────────────────────────────────────────────────── */
+/* ── Settings list layout ────────────────────────────────────────────────────── */
 
-.branding-grid {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 16px 20px;
-  align-items: start;
+.settings-group {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin: 28px 0 8px;
 }
 
-/* First row cards (Identity + Page header) equalize to the taller of the two */
-.branding-grid > .card:nth-child(1),
-.branding-grid > .card:nth-child(2) {
-  align-self: stretch;
+.settings-group:first-child {
+  margin-top: 0;
 }
 
-/* ── Content layout ──────────────────────────────────────────────────────────── */
+.settings-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
 
-.content-layout {
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.settings-row + .settings-row:not([hidden]) {
+  border-top: 1px solid var(--border);
+}
+
+.settings-row--top {
+  align-items: flex-start;
+  padding-top: 18px;
+}
+
+.settings-row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  display: block;
+}
+
+.settings-row-desc {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  line-height: 1.5;
+  display: block;
+  margin-top: 3px;
+}
+
+.settings-row-control {
+  flex: 0 0 280px;
+}
+
+.settings-row-control--end {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.settings-row-control input[type="text"] {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.settings-row-control input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+.settings-row-control input[type="text"]::placeholder {
+  color: var(--text-faint);
+}
+
+.settings-row.field--error .settings-row-control input[type="text"],
+.settings-row.field--error .settings-row-control input[type="text"]:focus {
+  border-color: var(--error);
+}
+
+/* ── Per-field reset button ──────────────────────────────────────────────────── */
+
+.btn-reset {
+  display: inline-block;
+  margin-top: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  font-family: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--text-faint);
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.btn-reset:hover:not(:disabled) {
+  color: var(--text-muted);
+  text-decoration-color: var(--text-muted);
+}
+
+.btn-reset:disabled {
+  opacity: 0.3;
+  cursor: default;
+  text-decoration: none;
+}
+
+/* ── Confirmation dialog ─────────────────────────────────────────────────────── */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.confirm-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 560px;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-message {
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* ── Asset states (logo/favicon) ─────────────────────────────────────────────── */
@@ -785,6 +921,8 @@ input[type="file"].hidden-file {
 .field-error {
   font-size: 0.75rem;
   color: var(--error);
+  display: block;
+  margin-top: 4px;
 }
 
 .field--error input[type="text"] {

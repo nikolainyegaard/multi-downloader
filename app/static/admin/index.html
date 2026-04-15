@@ -67,54 +67,98 @@
             <p>Control how the public site looks and is identified in browsers.</p>
           </div>
 
-          <div class="branding-grid">
-            <div class="card">
-              <h2 class="card-title">Identity</h2>
-              <div class="field">
-                <label for="site_title">Site title</label>
-                <span class="field-hint">Shown as the heading on the public page</span>
-                <input type="text" id="site_title" autocomplete="off" />
+          <h2 class="settings-group">Identity</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Browser title</span>
+                <span class="settings-row-desc">Browser tab title; falls back to site title when empty</span>
+                <button class="btn-reset" data-reset-field="browser_title" disabled>Reset</button>
               </div>
-              <div class="field">
-                <label for="browser_title">Browser title</label>
-                <span class="field-hint">Browser tab title; falls back to site title when empty</span>
+              <div class="settings-row-control">
                 <input type="text" id="browser_title" autocomplete="off" placeholder="Same as site title" />
               </div>
-              <div class="field">
-                <label for="subtitle">Subtitle</label>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Subtitle</span>
+                <button class="btn-reset" data-reset-field="subtitle" disabled>Reset</button>
+              </div>
+              <div class="settings-row-control">
                 <input type="text" id="subtitle" autocomplete="off" />
               </div>
             </div>
+          </div>
 
-            <div class="card">
-              <h2 class="card-title">Page header</h2>
-              <p class="card-desc">Choose what appears as the heading on the public page. Logo padding is trimmed automatically. Must be horizontal or square (max 5:1 ratio); scaled to fit within 480x160px.</p>
-              <div class="radio-group">
-                <label class="radio-option">
-                  <input type="radio" name="header_mode" value="title" />
-                  <span class="radio-label">Title text</span>
-                </label>
-                <label class="radio-option">
-                  <input type="radio" name="header_mode" value="logo" />
-                  <span class="radio-label">Logo image</span>
-                </label>
+          <h2 class="settings-group">Page header</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Header mode</span>
+                <span class="settings-row-desc">Choose what appears as the heading on the public page. Logo must be horizontal or square (max 5:1 ratio); scaled to fit within 480x160px.</span>
+                <span class="field-error" id="header-mode-error" hidden>Upload and confirm a logo before selecting this option.</span>
+                <button class="btn-reset" data-reset-field="header_mode" disabled>Reset</button>
               </div>
-              <span class="field-error" id="header-mode-error" hidden>Upload and confirm a logo before selecting this option.</span>
-              <div id="logo-state" class="asset-state"></div>
-            </div>
-
-            <div class="card">
-              <h2 class="card-title">Accent color</h2>
-              <div class="color-row">
-                <input type="color" id="accent_color" />
-                <input type="text" id="accent_hex" class="hex-input" maxlength="7" spellcheck="false" />
+              <div class="settings-row-control">
+                <div class="radio-group">
+                  <label class="radio-option">
+                    <input type="radio" name="header_mode" value="title" />
+                    <span class="radio-label">Title text</span>
+                  </label>
+                  <label class="radio-option">
+                    <input type="radio" name="header_mode" value="logo" />
+                    <span class="radio-label">Logo image</span>
+                  </label>
+                </div>
               </div>
             </div>
+            <div id="header-title-row" class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Site title</span>
+                <span class="settings-row-desc">Shown as the heading on the public page</span>
+                <button class="btn-reset" data-reset-field="site_title" disabled>Reset</button>
+              </div>
+              <div class="settings-row-control">
+                <input type="text" id="site_title" autocomplete="off" />
+              </div>
+            </div>
+            <div id="header-logo-row" class="settings-row settings-row--top" hidden>
+              <div class="settings-row-label">
+                <span class="settings-row-name">Logo</span>
+                <span class="settings-row-desc">Logo padding is trimmed automatically.</span>
+              </div>
+              <div class="settings-row-control">
+                <div id="logo-state" class="asset-state"></div>
+              </div>
+            </div>
+          </div>
 
-            <div class="card">
-              <h2 class="card-title">Favicon</h2>
-              <p class="card-desc">Browser tab and bookmark icon. Center-cropped to square; stored as 32x32 and 180x180 PNG.</p>
-              <div id="favicon-state" class="asset-state"></div>
+          <h2 class="settings-group">Accent color</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Color</span>
+                <button class="btn-reset" data-reset-field="accent_color" disabled>Reset</button>
+              </div>
+              <div class="settings-row-control">
+                <div class="color-row">
+                  <input type="color" id="accent_color" />
+                  <input type="text" id="accent_hex" class="hex-input" maxlength="7" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="settings-group">Favicon</h2>
+          <div class="settings-list">
+            <div class="settings-row settings-row--top">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Favicon</span>
+                <span class="settings-row-desc">Browser tab and bookmark icon. Center-cropped to square; stored as 32x32 and 180x180 PNG.</span>
+              </div>
+              <div class="settings-row-control">
+                <div id="favicon-state" class="asset-state"></div>
+              </div>
             </div>
           </div>
 
@@ -127,37 +171,46 @@
             <p>Configure UI elements and third-party integrations.</p>
           </div>
 
-          <div class="content-layout">
-            <div class="card">
-              <h2 class="card-title">UI options</h2>
-              <div class="toggle-row">
-                <div>
-                  <span class="toggle-label">Paste button</span>
-                  <span class="toggle-desc">Show the Paste button in the URL input row</span>
-                </div>
+          <h2 class="settings-group">UI options</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Paste button</span>
+                <span class="settings-row-desc">Show the Paste button in the URL input row</span>
+                <button class="btn-reset" data-reset-field="show_paste_button" disabled>Reset</button>
+              </div>
+              <div class="settings-row-control settings-row-control--end">
                 <label class="toggle-switch">
                   <input type="checkbox" id="show_paste_button" />
                   <span class="toggle-track"></span>
                 </label>
               </div>
             </div>
+          </div>
 
-            <div class="card">
-              <h2 class="card-title">Ko-fi</h2>
-              <div class="toggle-row">
-                <div>
-                  <span class="toggle-label">Enable widget</span>
-                  <span class="toggle-desc">Show a floating Ko-fi donation button on the public page</span>
-                </div>
+          <h2 class="settings-group">Ko-fi</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Enable widget</span>
+                <span class="settings-row-desc">Show a floating Ko-fi donation button on the public page</span>
+                <button class="btn-reset" data-reset-field="kofi_enabled" disabled>Reset</button>
+              </div>
+              <div class="settings-row-control settings-row-control--end">
                 <label class="toggle-switch">
                   <input type="checkbox" id="kofi_enabled" />
                   <span class="toggle-track"></span>
                 </label>
               </div>
-              <div id="kofi-username-row" class="field" hidden>
-                <label for="kofi_username">Username <span class="field-required-mark">*</span></label>
-                <input type="text" id="kofi_username" autocomplete="off" placeholder="yourname" />
+            </div>
+            <div id="kofi-username-row" class="settings-row" hidden>
+              <div class="settings-row-label">
+                <span class="settings-row-name">Username <span class="field-required-mark">*</span></span>
                 <span class="field-error" id="kofi-username-error" hidden>Required</span>
+                <button class="btn-reset" data-reset-field="kofi_username" disabled>Reset</button>
+              </div>
+              <div class="settings-row-control">
+                <input type="text" id="kofi_username" autocomplete="off" placeholder="yourname" />
               </div>
             </div>
           </div>
@@ -204,6 +257,17 @@
     <div class="save-bar" id="save-bar">
       <button id="save-branding" class="btn btn--primary">Save changes</button>
       <button id="save-content" class="btn btn--primary" hidden>Save changes</button>
+    </div>
+  </div>
+
+  <!-- Confirmation dialog -->
+  <div id="confirm-overlay" class="confirm-overlay" hidden aria-modal="true" role="dialog">
+    <div class="confirm-card">
+      <p class="confirm-message" id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button class="btn btn--ghost" id="confirm-cancel">Cancel</button>
+        <button class="btn btn--primary" id="confirm-ok">Confirm</button>
+      </div>
     </div>
   </div>
 
