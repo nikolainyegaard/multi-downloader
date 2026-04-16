@@ -4,11 +4,12 @@ import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-DATA_DIR    = Path(os.getenv("DATA_DIR", "/app/data"))
-CONFIG_DIR  = DATA_DIR / "config"
-LEGAL_DIR   = DATA_DIR / "legal"
-LOGS_DIR    = DATA_DIR / "logs"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+DATA_DIR          = Path(os.getenv("DATA_DIR", "/app/data"))
+CONFIG_DIR        = DATA_DIR / "config"
+LEGAL_DIR         = DATA_DIR / "legal"
+LOGS_DIR          = DATA_DIR / "logs"
+STATIC_ASSETS_DIR = DATA_DIR / "static"
+CONFIG_FILE       = CONFIG_DIR / "config.json"
 
 _FIELDS = frozenset({
     "site_title", "subtitle", "accent_color", "show_paste_button",
@@ -80,6 +81,37 @@ def migrate_from_legacy() -> None:
             "Once verified, remove the old bind mount (./config) from docker-compose.yml.",
             flush=True,
         )
+
+
+def migrate_assets_to_static() -> None:
+    """
+    One-time migration: move logo/favicon asset files from data/config/ to data/static/.
+    Safe to call on every startup: skips files that already exist at the destination.
+    """
+    asset_names = [
+        "logo.avif", "logo.webp",
+        "logo_pending.avif", "logo_pending.webp",
+        "favicon-32.png", "favicon-180.png",
+        "favicon-32_pending.png", "favicon-180_pending.png",
+    ]
+    moved = []
+    for name in asset_names:
+        src = CONFIG_DIR / name
+        if not src.exists():
+            continue
+        dst = STATIC_ASSETS_DIR / name
+        if dst.exists():
+            print(f"[migration] skipping {name}: already at {dst}", flush=True)
+            continue
+        try:
+            STATIC_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), dst)
+            moved.append(name)
+            print(f"[migration] moved {src} -> {dst}", flush=True)
+        except Exception as exc:
+            print(f"[migration] could not move {src} -> {dst}: {exc}", flush=True)
+    if moved:
+        print(f"[migration] assets moved to data/static/: {', '.join(moved)}", flush=True)
 
 
 def save_config(cfg: Config) -> None:

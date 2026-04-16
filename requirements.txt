@@ -6,3 +6,6 @@ bgutil-ytdlp-pot-provider
 pillow>=10.0
 pillow-avif-plugin
 python-multipart
+aiosqlite
+ua-parser
+geoip2

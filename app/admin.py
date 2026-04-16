@@ -1,16 +1,21 @@
 import io
 import logging
+import math
 import os
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
+import aiosqlite
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import CONFIG_DIR, LEGAL_DIR, LOGS_DIR, Config, load_config, save_config
+from app.config import CONFIG_DIR, LEGAL_DIR, LOGS_DIR, STATIC_ASSETS_DIR, Config, load_config, migrate_assets_to_static, save_config
+from app.db import DB_PATH, init_db
 
 try:
     import pillow_avif  # noqa: F401 - registers AVIF encoder
@@ -19,7 +24,15 @@ except ImportError:
 
 from PIL import Image
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    migrate_assets_to_static()
+    await init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 STATIC_DIR = Path(__file__).parent / "static" / "admin"
 APP_VERSION = os.getenv("APP_VERSION", "dev")
@@ -45,7 +58,7 @@ def _dlog(msg: str, *args) -> None:
 
 def _logo_path() -> Path | None:
     for ext in ("avif", "webp"):
-        p = CONFIG_DIR / f"logo.{ext}"
+        p = STATIC_ASSETS_DIR / f"logo.{ext}"
         if p.exists():
             return p
     return None
@@ -53,7 +66,7 @@ def _logo_path() -> Path | None:
 
 def _logo_pending_path() -> Path | None:
     for ext in ("avif", "webp"):
-        p = CONFIG_DIR / f"logo_pending.{ext}"
+        p = STATIC_ASSETS_DIR / f"logo_pending.{ext}"
         if p.exists():
             return p
     return None
@@ -102,13 +115,70 @@ class ConfigUpdate(BaseModel):
     show_disclaimer_warning: bool = True
 
 
+def _hex_to_hue(hex_color: str) -> int:
+    """Extract hue (0-359) from a hex color string."""
+    h = hex_color.lstrip('#')
+    r = int(h[0:2], 16) / 255
+    g = int(h[2:4], 16) / 255
+    b = int(h[4:6], 16) / 255
+    max_c, min_c = max(r, g, b), min(r, g, b)
+    if max_c == min_c:
+        return 0
+    d = max_c - min_c
+    if max_c == r:
+        hue = (g - b) / d + (6 if g < b else 0)
+    elif max_c == g:
+        hue = (b - r) / d + 2
+    else:
+        hue = (r - g) / d + 4
+    return round(hue / 6 * 360)
+
+
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
+    cfg = load_config()
+    browser_title = cfg.browser_title if cfg.browser_title else cfg.site_title
+
+    hue = _hex_to_hue(cfg.accent_color)
+    accent_style = (
+        f"<style>:root {{"
+        f" --accent: hsl({hue}, 78%, 60%);"
+        f" --accent-hover: hsl({hue}, 78%, 68%);"
+        f" --accent-subtle: hsla({hue}, 78%, 60%, 0.10);"
+        f" }}</style>"
+    )
+
+    favicon_link = ""
+    if (STATIC_ASSETS_DIR / "favicon-32.png").exists():
+        favicon_link = (
+            f'<link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico?v={APP_VERSION}" />\n  '
+            f'<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v={APP_VERSION}" />'
+        )
+
     html = (STATIC_DIR / "index.html").read_text()
     html = html.replace("__VERSION__", APP_VERSION)
+    html = html.replace("__BROWSER_TITLE__", f"Admin - {browser_title}")
+    html = html.replace("__ACCENT_STYLE__", accent_style)
+    html = html.replace("__FAVICON_LINK__", favicon_link)
     return HTMLResponse(html)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    path = STATIC_ASSETS_DIR / "favicon-32.png"
+    if not path.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(str(path), media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png")
+async def apple_touch_icon():
+    path = STATIC_ASSETS_DIR / "favicon-180.png"
+    if not path.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(str(path), media_type="image/png")
 
 
 @app.get("/disclaimer-guide")
@@ -145,7 +215,7 @@ async def get_config():
     data = asdict(cfg)
     # Computed read-only fields
     data["has_logo"] = _logo_path() is not None
-    data["has_favicon"] = (CONFIG_DIR / "favicon-32.png").exists()
+    data["has_favicon"] = (STATIC_ASSETS_DIR / "favicon-32.png").exists()
     data["has_disclaimer"] = (LEGAL_DIR / "disclaimer.md").exists()
     _dlog("GET /api/config  returned=%s", data)
     return data
@@ -227,14 +297,14 @@ async def upload_logo(file: UploadFile = File(...)):
         ext = "webp"
         img.save(buf, format="WEBP", quality=75)
 
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    STATIC_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
     # Clear any previous pending files
     for other in ("avif", "webp"):
-        p = CONFIG_DIR / f"logo_pending.{other}"
+        p = STATIC_ASSETS_DIR / f"logo_pending.{other}"
         if p.exists():
             p.unlink()
 
-    pending = CONFIG_DIR / f"logo_pending.{ext}"
+    pending = STATIC_ASSETS_DIR / f"logo_pending.{ext}"
     pending.write_bytes(buf.getvalue())
     _dlog("logo upload: saved pending %s (%dx%d from %dx%d, ratio=%.2f)", pending, new_w, new_h, w, h, ratio)
     return {"ok": True, "preview_url": "/api/logo/pending"}
@@ -266,11 +336,11 @@ async def confirm_logo():
 
     # Remove existing live logo (any format)
     for ext in ("avif", "webp"):
-        live = CONFIG_DIR / f"logo.{ext}"
+        live = STATIC_ASSETS_DIR / f"logo.{ext}"
         if live.exists():
             live.unlink()
 
-    live = CONFIG_DIR / f"logo.{p.suffix.lstrip('.')}"
+    live = STATIC_ASSETS_DIR / f"logo.{p.suffix.lstrip('.')}"
     os.replace(p, live)
 
     cfg = load_config()
@@ -283,7 +353,7 @@ async def confirm_logo():
 @app.post("/api/logo/discard")
 async def discard_logo():
     for ext in ("avif", "webp"):
-        p = CONFIG_DIR / f"logo_pending.{ext}"
+        p = STATIC_ASSETS_DIR / f"logo_pending.{ext}"
         if p.exists():
             p.unlink()
     return {"ok": True}
@@ -292,7 +362,7 @@ async def discard_logo():
 @app.delete("/api/logo")
 async def delete_logo():
     for ext in ("avif", "webp"):
-        p = CONFIG_DIR / f"logo.{ext}"
+        p = STATIC_ASSETS_DIR / f"logo.{ext}"
         if p.exists():
             p.unlink()
     cfg = load_config()
@@ -313,17 +383,17 @@ async def upload_favicon(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Could not read image file")
 
     img = _crop_square(img)
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    STATIC_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
-    img.resize((32, 32), Image.LANCZOS).save(CONFIG_DIR / "favicon-32_pending.png", "PNG")
-    img.resize((180, 180), Image.LANCZOS).save(CONFIG_DIR / "favicon-180_pending.png", "PNG")
+    img.resize((32, 32), Image.LANCZOS).save(STATIC_ASSETS_DIR / "favicon-32_pending.png", "PNG")
+    img.resize((180, 180), Image.LANCZOS).save(STATIC_ASSETS_DIR / "favicon-180_pending.png", "PNG")
     _dlog("favicon upload: saved pending files")
     return {"ok": True, "preview_url": "/api/favicon/pending"}
 
 
 @app.get("/api/favicon/pending")
 async def favicon_pending():
-    path = CONFIG_DIR / "favicon-32_pending.png"
+    path = STATIC_ASSETS_DIR / "favicon-32_pending.png"
     if not path.exists():
         raise HTTPException(status_code=404, detail="No pending favicon")
     return FileResponse(str(path), media_type="image/png")
@@ -331,14 +401,14 @@ async def favicon_pending():
 
 @app.post("/api/favicon/confirm")
 async def confirm_favicon():
-    p32 = CONFIG_DIR / "favicon-32_pending.png"
-    p180 = CONFIG_DIR / "favicon-180_pending.png"
+    p32 = STATIC_ASSETS_DIR / "favicon-32_pending.png"
+    p180 = STATIC_ASSETS_DIR / "favicon-180_pending.png"
     if not p32.exists():
         raise HTTPException(status_code=404, detail="No pending favicon to confirm")
 
-    os.replace(p32, CONFIG_DIR / "favicon-32.png")
+    os.replace(p32, STATIC_ASSETS_DIR / "favicon-32.png")
     if p180.exists():
-        os.replace(p180, CONFIG_DIR / "favicon-180.png")
+        os.replace(p180, STATIC_ASSETS_DIR / "favicon-180.png")
     _dlog("favicon confirm: live files updated")
     return {"ok": True}
 
@@ -346,7 +416,7 @@ async def confirm_favicon():
 @app.post("/api/favicon/discard")
 async def discard_favicon():
     for name in ("favicon-32_pending.png", "favicon-180_pending.png"):
-        p = CONFIG_DIR / name
+        p = STATIC_ASSETS_DIR / name
         if p.exists():
             p.unlink()
     return {"ok": True}
@@ -355,31 +425,149 @@ async def discard_favicon():
 @app.delete("/api/favicon")
 async def delete_favicon():
     for name in ("favicon-32.png", "favicon-180.png"):
-        p = CONFIG_DIR / name
+        p = STATIC_ASSETS_DIR / name
         if p.exists():
             p.unlink()
     _dlog("favicon deleted")
     return {"ok": True}
 
 
-# ── Stats / Logs (stubs -- replaced when request logging is implemented) ───────
+# ── Stats / Logs ──────────────────────────────────────────────────────────────
+
+def _platform(url: str | None) -> str | None:
+    if not url:
+        return None
+    try:
+        netloc = urlparse(url).netloc
+        # strip www. prefix for display
+        return netloc.removeprefix("www.") or None
+    except Exception:
+        return None
+
 
 @app.get("/api/stats")
 async def get_stats():
-    return {"available": False, "message": "Request logging not yet configured"}
+    if not DB_PATH.exists():
+        return {"available": False}
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+
+        row = await (await db.execute(
+            "SELECT COUNT(*) AS total FROM requests"
+        )).fetchone()
+        total_requests = row["total"]
+
+        row = await (await db.execute(
+            "SELECT COUNT(*) AS total FROM requests WHERE endpoint = 'download' AND success = 1"
+        )).fetchone()
+        total_downloads = row["total"]
+
+        row = await (await db.execute(
+            "SELECT COUNT(*) AS total FROM requests WHERE success = 0"
+        )).fetchone()
+        total_errors = row["total"]
+
+        rows = await (await db.execute(
+            """
+            SELECT url, COUNT(*) AS cnt
+            FROM requests
+            WHERE endpoint = 'download' AND success = 1 AND url IS NOT NULL
+            GROUP BY url
+            """
+        )).fetchall()
+
+    platform_counts: dict[str, int] = {}
+    for r in rows:
+        p = _platform(r["url"])
+        if p:
+            platform_counts[p] = platform_counts.get(p, 0) + r["cnt"]
+
+    services = sorted(
+        [{"name": k, "count": v} for k, v in platform_counts.items()],
+        key=lambda x: x["count"],
+        reverse=True,
+    )[:8]
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        daily_rows = await (await db.execute(
+            """
+            SELECT
+                substr(ts, 1, 10) AS date,
+                SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS ok,
+                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS err
+            FROM requests
+            WHERE endpoint = 'download'
+            GROUP BY date
+            ORDER BY date DESC
+            LIMIT 14
+            """
+        )).fetchall()
+
+    daily = [{"date": r["date"], "ok": r["ok"], "err": r["err"]} for r in reversed(daily_rows)]
+
+    return {
+        "available": True,
+        "totals": [
+            {"label": "Total requests", "value": total_requests},
+            {"label": "Downloads", "value": total_downloads},
+            {"label": "Errors", "value": total_errors},
+        ],
+        "services": services,
+        "daily": daily,
+    }
 
 
 @app.get("/api/logs")
 async def get_logs(page: int = 1, per_page: int = 50):
+    if not DB_PATH.exists():
+        return {"available": False, "items": [], "total": 0, "pages": 0, "page": page}
+
+    offset = (page - 1) * per_page
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+
+        row = await (await db.execute("SELECT COUNT(*) AS total FROM requests")).fetchone()
+        total = row["total"]
+
+        rows = await (await db.execute(
+            """
+            SELECT ts, ip, country, endpoint, url, success, duration_ms
+            FROM requests
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (per_page, offset),
+        )).fetchall()
+
+    items = [
+        {
+            "ts": r["ts"],
+            "ip": r["ip"],
+            "country": r["country"],
+            "endpoint": r["endpoint"],
+            "platform": _platform(r["url"]),
+            "url": r["url"],
+            "success": bool(r["success"]),
+            "duration_ms": r["duration_ms"],
+        }
+        for r in rows
+    ]
+
     return {
-        "available": False,
-        "message": "Request logging not yet configured",
-        "items": [],
-        "total": 0,
-        "pages": 0,
+        "available": True,
+        "items": items,
+        "total": total,
+        "pages": max(1, math.ceil(total / per_page)),
         "page": page,
     }
 
 
-# Static files -- mounted last so API routes take priority
+# User-provided assets (logos, favicons, etc.) served from data/static/
+STATIC_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=STATIC_ASSETS_DIR), name="user_assets")
+
+# Bundled app static files -- mounted last so API routes take priority
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

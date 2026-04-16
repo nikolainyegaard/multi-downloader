@@ -1,5 +1,87 @@
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+const THEME_ICONS = {
+  system: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+  light:  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>',
+  dark:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+};
+
+function getStoredTheme() {
+  return localStorage.getItem('theme') || 'system';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  redrawCharts();
+}
+
+function hexToHue(hex) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max === min) return 0;
+  const d = max - min;
+  let hue;
+  if (max === r) hue = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) hue = (b - r) / d + 2;
+  else hue = (r - g) / d + 4;
+  return Math.round(hue / 6 * 360);
+}
+
+function applyAccentVars(hex) {
+  const hue = hexToHue(hex);
+  const root = document.documentElement;
+  root.style.setProperty('--accent', `hsl(${hue}, 78%, 60%)`);
+  root.style.setProperty('--accent-hover', `hsl(${hue}, 78%, 68%)`);
+  root.style.setProperty('--accent-subtle', `hsla(${hue}, 78%, 60%, 0.10)`);
+}
+
+function syncThemeButton() {
+  const theme = getStoredTheme();
+  const icon  = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (icon)  icon.innerHTML = THEME_ICONS[theme];
+  if (label) label.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
+  document.querySelectorAll('.theme-option').forEach((opt) => {
+    opt.classList.toggle('active', opt.dataset.theme === theme);
+  });
+}
+
+(function initThemeToggle() {
+  syncThemeButton();
+
+  const btn  = document.getElementById('theme-btn');
+  const menu = document.getElementById('theme-menu');
+  if (!btn || !menu) return;
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const opening = menu.hidden;
+    menu.hidden = !menu.hidden;
+    btn.setAttribute('aria-expanded', String(opening));
+  });
+
+  menu.addEventListener('click', (e) => {
+    const opt = e.target.closest('.theme-option');
+    if (!opt) return;
+    applyTheme(opt.dataset.theme);
+    syncThemeButton();
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('click', () => {
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  });
+})();
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
+let currentSection = 'branding';
 let cfg = {};           // current config (includes computed fields from GET /api/config)
 let statsLoaded = false;
 let logsLoaded  = false;
@@ -158,6 +240,19 @@ function getFormValue(field) {
   }
 }
 
+const BRANDING_FIELDS = new Set(['browser_title', 'subtitle', 'header_mode', 'site_title', 'accent_color']);
+const CONTENT_FIELDS  = new Set(['show_paste_button', 'kofi_enabled', 'kofi_username']);
+
+function isSectionDirty(fields) {
+  for (const field of fields) {
+    if (!(field in cfg)) continue;
+    const saved   = cfg[field];
+    const current = getFormValue(field);
+    if (String(current) !== String(saved)) return true;
+  }
+  return false;
+}
+
 function updateResetBtns() {
   document.querySelectorAll('[data-reset-field]').forEach(btn => {
     const field = btn.dataset.resetField;
@@ -166,6 +261,16 @@ function updateResetBtns() {
     const current = getFormValue(field);
     btn.disabled = String(current) === String(def);
   });
+  updateSaveBar();
+}
+
+function updateSaveBar() {
+  const btn = document.getElementById('save-btn');
+  if (!btn) return;
+  const sectionFields = currentSection === 'branding' ? BRANDING_FIELDS
+                      : currentSection === 'content'  ? CONTENT_FIELDS
+                      : null;
+  btn.hidden = !sectionFields || !isSectionDirty(sectionFields);
 }
 
 function resetField(field) {
@@ -195,6 +300,7 @@ function resetField(field) {
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 function showSection(name) {
+  currentSection = name;
   document.querySelectorAll('.section').forEach(s => s.hidden = true);
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
 
@@ -204,12 +310,7 @@ function showSection(name) {
   const btn = document.querySelector(`.nav-item[data-section="${name}"]`);
   if (btn) btn.classList.add('active');
 
-  const saveBar      = document.getElementById('save-bar');
-  const saveBranding = document.getElementById('save-branding');
-  const saveContent  = document.getElementById('save-content');
-  if (saveBranding) saveBranding.hidden = name !== 'branding';
-  if (saveContent)  saveContent.hidden  = name !== 'content';
-  if (saveBar)      saveBar.hidden      = !['branding', 'content'].includes(name);
+  updateSaveBar();
 
   if (name === 'statistics' && !statsLoaded) loadStats();
   if (name === 'logs'       && !logsLoaded)  loadLogs(1);
@@ -252,10 +353,11 @@ document.getElementById('dismiss-disclaimer')?.addEventListener('click', async (
 function validateBranding() {
   const headerMode = document.querySelector('input[name="header_mode"]:checked')?.value ?? 'title';
   const errorEl    = document.getElementById('header-mode-error');
-  const saveBtn    = document.getElementById('save-branding');
   const invalid    = headerMode === 'logo' && !cfg.has_logo;
   if (errorEl) errorEl.hidden = !invalid;
-  if (saveBtn) saveBtn.disabled = invalid;
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn && currentSection === 'branding') saveBtn.disabled = invalid;
+  updateSaveBar();
 }
 
 function validateContent() {
@@ -263,11 +365,12 @@ function validateContent() {
   const kofiUsername = document.getElementById('kofi_username')?.value.trim() ?? '';
   const row          = document.getElementById('kofi-username-row');
   const errorEl      = document.getElementById('kofi-username-error');
-  const saveBtn      = document.getElementById('save-content');
   const invalid      = kofiEnabled && !kofiUsername;
   row?.classList.toggle('field--error', invalid);
   if (errorEl) errorEl.hidden = !invalid;
-  if (saveBtn) saveBtn.disabled = invalid;
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn && currentSection === 'content') saveBtn.disabled = invalid;
+  updateSaveBar();
 }
 
 function updateHeaderModeView() {
@@ -288,31 +391,46 @@ document.getElementById('kofi_username')?.addEventListener('input', validateCont
 // Color picker <-> hex input sync
 document.getElementById('accent_color')?.addEventListener('input', (e) => {
   setVal('accent_hex', e.target.value);
+  applyAccentVars(e.target.value);
 });
 
 document.getElementById('accent_hex')?.addEventListener('input', (e) => {
   if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
     setVal('accent_color', e.target.value);
+    applyAccentVars(e.target.value);
   }
 });
 
-document.getElementById('save-branding')?.addEventListener('click', async () => {
-  const btn = document.getElementById('save-branding');
+document.getElementById('save-btn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('save-btn');
   btn.disabled = true;
   try {
-    await apiPost('/api/config', configPayload({
-      site_title:    document.getElementById('site_title').value.trim(),
-      browser_title: document.getElementById('browser_title').value.trim(),
-      subtitle:      document.getElementById('subtitle').value.trim(),
-      accent_color:  document.getElementById('accent_color').value,
-      header_mode:   document.querySelector('input[name="header_mode"]:checked')?.value ?? 'title',
-    }));
-    await reloadConfig();
-    showToast('success', 'Branding saved');
+    if (currentSection === 'branding') {
+      const accent = document.getElementById('accent_color').value;
+      await apiPost('/api/config', configPayload({
+        site_title:    document.getElementById('site_title').value.trim(),
+        browser_title: document.getElementById('browser_title').value.trim(),
+        subtitle:      document.getElementById('subtitle').value.trim(),
+        accent_color:  accent,
+        header_mode:   document.querySelector('input[name="header_mode"]:checked')?.value ?? 'title',
+      }));
+      applyAccentVars(accent);
+      await reloadConfig();
+      showToast('success', 'Branding saved');
+    } else if (currentSection === 'content') {
+      await apiPost('/api/config', configPayload({
+        show_paste_button: document.getElementById('show_paste_button').checked,
+        kofi_enabled:      document.getElementById('kofi_enabled').checked,
+        kofi_username:     document.getElementById('kofi_username').value.trim(),
+      }));
+      await reloadConfig();
+      showToast('success', 'Content settings saved');
+    }
   } catch (err) {
     showToast('error', err.message);
   } finally {
-    validateBranding();
+    if (currentSection === 'branding') validateBranding();
+    else validateContent();
   }
 });
 
@@ -512,23 +630,6 @@ function updateKofiFields() {
 
 document.getElementById('kofi_enabled')?.addEventListener('change', updateKofiFields);
 
-document.getElementById('save-content')?.addEventListener('click', async () => {
-  const btn = document.getElementById('save-content');
-  btn.disabled = true;
-  try {
-    await apiPost('/api/config', configPayload({
-      show_paste_button: document.getElementById('show_paste_button').checked,
-      kofi_enabled:      document.getElementById('kofi_enabled').checked,
-      kofi_username:     document.getElementById('kofi_username').value.trim(),
-    }));
-    await reloadConfig();
-    showToast('success', 'Content settings saved');
-  } catch (err) {
-    showToast('error', err.message);
-  } finally {
-    validateContent();
-  }
-});
 
 // ── Statistics section ────────────────────────────────────────────────────────
 
@@ -583,6 +684,19 @@ async function loadStats() {
 
   drawDonut('chart-pie', 'chart-pie-legend', data.services || []);
   drawBars('chart-bar', data.daily || []);
+
+  // store data on canvas elements so redrawCharts() can replay them
+  const pie = document.getElementById('chart-pie');
+  const bar = document.getElementById('chart-bar');
+  if (pie) pie._chartData = { segments: data.services || [] };
+  if (bar) bar._chartData = { daily: data.daily || [] };
+}
+
+function redrawCharts() {
+  const pie = document.getElementById('chart-pie');
+  const bar = document.getElementById('chart-bar');
+  if (pie?._chartData) drawDonut('chart-pie', 'chart-pie-legend', pie._chartData.segments);
+  if (bar?._chartData) drawBars('chart-bar', bar._chartData.daily);
 }
 
 function drawDonut(canvasId, legendId, segments) {
@@ -604,13 +718,18 @@ function drawDonut(canvasId, legendId, segments) {
   const colored = segments.map((s, i) => ({ ...s, color: SERVICE_COLORS[i % SERVICE_COLORS.length] }));
   const total = colored.reduce((acc, s) => acc + s.count, 0);
 
+  const style = getComputedStyle(document.documentElement);
+  const colorText     = style.getPropertyValue('--text').trim();
+  const colorMuted    = style.getPropertyValue('--text-muted').trim();
+  const colorSurface3 = style.getPropertyValue('--surface-3').trim();
+
   if (total === 0) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.arc(cx, cy, inner, 0, Math.PI * 2, true);
-    ctx.fillStyle = '#252525';
+    ctx.fillStyle = colorSurface3;
     ctx.fill('evenodd');
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = colorMuted;
     ctx.font = `bold 14px -apple-system, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -631,7 +750,7 @@ function drawDonut(canvasId, legendId, segments) {
     angle += slice;
   }
 
-  ctx.fillStyle = '#e5e5e5';
+  ctx.fillStyle = colorText;
   ctx.font = `bold ${Math.round(r * 0.28)}px -apple-system, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -645,6 +764,32 @@ function drawDonut(canvasId, legendId, segments) {
         ${s.name} (${s.count})
       </span>`).join('');
   }
+
+  // build pie hitmap: array of {startAngle, endAngle, name, count}
+  canvas._pieHitmap = [];
+  let a = -Math.PI / 2;
+  for (const seg of colored) {
+    const slice = (seg.count / total) * Math.PI * 2;
+    canvas._pieHitmap.push({ startAngle: a, endAngle: a + slice, name: seg.name, count: seg.count, cx, cy, r, inner });
+    a += slice;
+  }
+
+  initCanvasTooltip(canvas, (mx, my) => {
+    const hm = canvas._pieHitmap;
+    if (!hm) return null;
+    for (const seg of hm) {
+      const dx = mx - seg.cx, dy = my - seg.cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < seg.inner || dist > seg.r) continue;
+      let angle = Math.atan2(dy, dx);
+      // normalise so both angle and segment range share the same -π/2 origin
+      if (angle < -Math.PI / 2) angle += Math.PI * 2;
+      if (angle >= seg.startAngle && angle < seg.endAngle) {
+        return `${seg.name}: ${seg.count}`;
+      }
+    }
+    return null;
+  });
 }
 
 function drawBars(canvasId, daily) {
@@ -663,38 +808,118 @@ function drawBars(canvasId, daily) {
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
 
+  const colorMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+
   if (!daily.length) {
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = colorMuted;
     ctx.font = '13px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('No data', w / 2, h / 2);
+    canvas._barHitmap = null;
     return;
   }
 
-  const maxVal = Math.max(...daily.map(d => d.count), 1);
-  const barW = Math.max(2, chartW / daily.length - 2);
-  const gap  = chartW / daily.length;
+  const maxVal = Math.max(...daily.map(d => (d.ok || 0) + (d.err || 0)), 1);
+  const groupW = chartW / daily.length;
+  const barW   = Math.max(2, groupW - 4);
+  const barX0  = padL + (groupW - barW) / 2;
+
+  // hitmap: array of {x, okY, okH, errY, errH, ok, err, date} in CSS px
+  const hitmap = [];
 
   daily.forEach((d, i) => {
-    const barH = (d.count / maxVal) * chartH;
-    const x = padL + i * gap;
-    const y = padT + chartH - barH;
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillRect(x, y, barW, barH);
+    const ok  = d.ok  || 0;
+    const err = d.err || 0;
+    const total = ok + err;
+    const x = barX0 + i * groupW;
+
+    const totalH = (total / maxVal) * chartH;
+    const okH    = total > 0 ? (ok  / total) * totalH : 0;
+    const errH   = total > 0 ? (err / total) * totalH : 0;
+    const baseY  = padT + chartH;
+
+    // error segment on top, download segment on bottom
+    if (err > 0) {
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(x, baseY - totalH, barW, errH);
+    }
+    if (ok > 0) {
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(x, baseY - okH, barW, okH);
+    }
+
+    hitmap.push({
+      x, barW,
+      errY: baseY - totalH, errH,
+      okY:  baseY - okH,    okH,
+      ok, err, date: d.date,
+    });
   });
 
-  ctx.fillStyle = '#555';
-  ctx.font = `${10 * dpr / dpr}px -apple-system, sans-serif`;
+  ctx.fillStyle = colorMuted;
+  ctx.font = '10px -apple-system, sans-serif';
   ctx.textAlign = 'center';
-  const step = Math.max(1, Math.ceil(daily.length / 8));
+  const step = Math.max(1, Math.ceil(daily.length / 7));
   daily.forEach((d, i) => {
     if (i % step === 0) {
-      const x = padL + i * gap + barW / 2;
-      const label = d.date ? d.date.slice(5) : '';  // MM-DD from YYYY-MM-DD
+      const x = barX0 + i * groupW + barW / 2;
+      const label = d.date ? d.date.slice(5) : '';
       ctx.fillText(label, x, h - padB + 14);
     }
   });
+
+  canvas._barHitmap = hitmap;
+  initCanvasTooltip(canvas, (mx, my) => {
+    const hm = canvas._barHitmap;
+    if (!hm) return null;
+    for (const seg of hm) {
+      if (mx < seg.x || mx > seg.x + seg.barW) continue;
+      if (seg.errH > 0 && my >= seg.errY && my <= seg.errY + seg.errH) return `Errors: ${seg.err}`;
+      if (seg.okH  > 0 && my >= seg.okY  && my <= seg.okY  + seg.okH)  return `Downloads: ${seg.ok}`;
+    }
+    return null;
+  });
+}
+
+function getTooltipEl() {
+  let tip = document.getElementById('chart-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'chart-tooltip';
+    tip.className = 'bar-tooltip';
+    tip.hidden = true;
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+
+function showTooltipAt(tip, text, e) {
+  tip.textContent = text;
+  tip.hidden = false;
+  const offset = 10;
+  tip.style.left = `${e.clientX + offset}px`;
+  tip.style.top  = `${e.clientY - tip.offsetHeight - offset}px`;
+}
+
+// Generic canvas tooltip — hitFn(mx, my) returns a label string or null.
+function initCanvasTooltip(canvas, hitFn) {
+  if (canvas._tooltipInit) return;
+  canvas._tooltipInit = true;
+
+  const tip = getTooltipEl();
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const label = hitFn(e.clientX - rect.left, e.clientY - rect.top);
+    if (label) {
+      showTooltipAt(tip, label, e);
+    } else {
+      tip.hidden = true;
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => { tip.hidden = true; });
 }
 
 // ── Logs section ──────────────────────────────────────────────────────────────
@@ -745,22 +970,24 @@ async function loadLogs(page) {
   const nextDisabled = page >= data.pages ? 'disabled' : '';
 
   el.innerHTML = `
-    <div class="log-table-wrap">
-      <table class="log-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>IP</th>
-            <th>Country</th>
-            <th>Endpoint</th>
-            <th>Platform</th>
-            <th>URL</th>
-            <th>Status</th>
-            <th>Duration</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="log-block">
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>IP</th>
+              <th>Country</th>
+              <th>Endpoint</th>
+              <th>Platform</th>
+              <th>URL</th>
+              <th>Status</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
       <div class="log-pagination">
         <span class="log-pagination-info">
           Page ${page} of ${data.pages} (${data.total} entries)

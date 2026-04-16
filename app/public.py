@@ -2,21 +2,35 @@ import asyncio
 import os
 import shutil
 import tempfile
+import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
 import mistune
 import yt_dlp
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app.config import CONFIG_DIR, LEGAL_DIR, load_config
+from app.config import CONFIG_DIR, LEGAL_DIR, STATIC_ASSETS_DIR, load_config, migrate_assets_to_static
+from app.db import close_db, init_db, log_request
 from app.downloader import download_video, get_video_info
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    migrate_assets_to_static()
+    await init_db()
+    yield
+    close_db()
+
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 STATIC_DIR = Path(__file__).parent / "static" / "public"
 APP_VERSION = os.getenv("APP_VERSION", "dev")
@@ -31,7 +45,7 @@ def _domain(url: str) -> str:
 
 def _logo_path() -> Path | None:
     for ext in ("avif", "webp"):
-        p = CONFIG_DIR / f"logo.{ext}"
+        p = STATIC_ASSETS_DIR / f"logo.{ext}"
         if p.exists():
             return p
     return None
@@ -56,7 +70,7 @@ async def root():
     html = html.replace("__PASTE_HIDDEN__", "" if cfg.show_paste_button else " hidden")
 
     # Favicon links
-    if (CONFIG_DIR / "favicon-32.png").exists():
+    if (STATIC_ASSETS_DIR / "favicon-32.png").exists():
         favicon_link = (
             f'<link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico?v={APP_VERSION}" />\n  '
             f'<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v={APP_VERSION}" />'
@@ -121,7 +135,7 @@ async def root():
 
 @app.get("/favicon.ico")
 async def favicon():
-    path = CONFIG_DIR / "favicon-32.png"
+    path = STATIC_ASSETS_DIR / "favicon-32.png"
     if not path.exists():
         raise HTTPException(status_code=404)
     return FileResponse(str(path), media_type="image/png")
@@ -129,7 +143,7 @@ async def favicon():
 
 @app.get("/apple-touch-icon.png")
 async def apple_touch_icon():
-    path = CONFIG_DIR / "favicon-180.png"
+    path = STATIC_ASSETS_DIR / "favicon-180.png"
     if not path.exists():
         raise HTTPException(status_code=404)
     return FileResponse(str(path), media_type="image/png")
@@ -189,26 +203,59 @@ async def legal_disclaimer():
 
 
 @app.post("/api/info")
-async def info(req: DownloadRequest):
+async def info(req: DownloadRequest, request: Request):
     url = req.url.strip()
     if not url:
         raise HTTPException(status_code=422, detail="URL is required")
+    client_ip = request.client.host if request.client else ""
+    user_agent = request.headers.get("user-agent", "")
+    start = time.monotonic()
     try:
         async with _domain_semaphores[_domain(url)]:
             data = await asyncio.to_thread(get_video_info, url)
+        asyncio.create_task(log_request(
+            ip=client_ip,
+            user_agent=user_agent,
+            endpoint="info",
+            url=url,
+            success=True,
+            duration_ms=int((time.monotonic() - start) * 1000),
+        ))
         return data
     except yt_dlp.utils.DownloadError as e:
         msg = str(e).removeprefix("ERROR: ")
+        asyncio.create_task(log_request(
+            ip=client_ip,
+            user_agent=user_agent,
+            endpoint="info",
+            url=url,
+            success=False,
+            error=str(e),
+            duration_ms=int((time.monotonic() - start) * 1000),
+        ))
         raise HTTPException(status_code=400, detail=msg)
     except Exception as e:
+        asyncio.create_task(log_request(
+            ip=client_ip,
+            user_agent=user_agent,
+            endpoint="info",
+            url=url,
+            success=False,
+            error=f"{type(e).__name__}: {e}",
+            duration_ms=int((time.monotonic() - start) * 1000),
+        ))
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/download")
-async def download(req: DownloadRequest):
+async def download(req: DownloadRequest, request: Request):
     url = req.url.strip()
     if not url:
         raise HTTPException(status_code=422, detail="URL is required")
+
+    client_ip = request.client.host if request.client else ""
+    user_agent = request.headers.get("user-agent", "")
+    start = time.monotonic()
 
     tmpdir = tempfile.mkdtemp()
     try:
@@ -217,13 +264,40 @@ async def download(req: DownloadRequest):
     except yt_dlp.utils.DownloadError as e:
         shutil.rmtree(tmpdir, ignore_errors=True)
         msg = str(e).removeprefix("ERROR: ")
+        asyncio.create_task(log_request(
+            ip=client_ip,
+            user_agent=user_agent,
+            endpoint="download",
+            url=url,
+            success=False,
+            error=str(e),
+            duration_ms=int((time.monotonic() - start) * 1000),
+        ))
         raise HTTPException(status_code=400, detail=msg)
     except Exception as e:
         shutil.rmtree(tmpdir, ignore_errors=True)
+        asyncio.create_task(log_request(
+            ip=client_ip,
+            user_agent=user_agent,
+            endpoint="download",
+            url=url,
+            success=False,
+            error=f"{type(e).__name__}: {e}",
+            duration_ms=int((time.monotonic() - start) * 1000),
+        ))
         raise HTTPException(status_code=500, detail=str(e))
 
     if not os.path.exists(filepath):
         shutil.rmtree(tmpdir, ignore_errors=True)
+        asyncio.create_task(log_request(
+            ip=client_ip,
+            user_agent=user_agent,
+            endpoint="download",
+            url=url,
+            success=False,
+            error="download produced no output file",
+            duration_ms=int((time.monotonic() - start) * 1000),
+        ))
         raise HTTPException(status_code=500, detail="Download produced no output file")
 
     filename = os.path.basename(filepath)
@@ -231,12 +305,26 @@ async def download(req: DownloadRequest):
     encoded_name = quote(filename, safe="")
 
     async def stream_and_cleanup():
+        completed = False
         try:
             with open(filepath, "rb") as f:
                 while chunk := f.read(1024 * 1024):
                     yield chunk
+            completed = True
         finally:
+            elapsed = int((time.monotonic() - start) * 1000)
             shutil.rmtree(tmpdir, ignore_errors=True)
+            asyncio.create_task(log_request(
+                ip=client_ip,
+                user_agent=user_agent,
+                endpoint="download",
+                url=url,
+                success=completed,
+                error=None if completed else "stream interrupted",
+                filename=filename,
+                filesize=filesize,
+                duration_ms=elapsed,
+            ))
 
     return StreamingResponse(
         stream_and_cleanup(),
@@ -248,5 +336,10 @@ async def download(req: DownloadRequest):
     )
 
 
-# Static files -- mounted last so API routes take priority
+# User-provided assets (logos, favicons, etc.) served from data/static/
+# Directory is created at startup; files placed there are immediately available.
+STATIC_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=STATIC_ASSETS_DIR), name="user_assets")
+
+# Bundled app static files -- mounted last so API routes take priority
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

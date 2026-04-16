@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin - multi-downloader</title>
+  <title>__BROWSER_TITLE__</title>
+  __FAVICON_LINK__
   <link rel="stylesheet" href="/static/style.css?v=__VERSION__" />
+  __ACCENT_STYLE__
+  <script>(function(){var t=localStorage.getItem('theme')||'system';document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
 <body>
   <div class="layout">
@@ -254,10 +257,7 @@
       </main>
     </div>
 
-    <div class="save-bar" id="save-bar">
-      <button id="save-branding" class="btn btn--primary">Save changes</button>
-      <button id="save-content" class="btn btn--primary" hidden>Save changes</button>
-    </div>
+    <button id="save-btn" class="save-btn btn btn--primary" hidden>Save changes</button>
   </div>
 
   <!-- Confirmation dialog -->
@@ -268,6 +268,19 @@
         <button class="btn btn--ghost" id="confirm-cancel">Cancel</button>
         <button class="btn btn--primary" id="confirm-ok">Confirm</button>
       </div>
+    </div>
+  </div>
+
+  <div class="theme-toggle">
+    <button class="theme-btn" id="theme-btn" aria-haspopup="true">
+      <span id="theme-icon" aria-hidden="true"></span>
+      <span id="theme-label">System</span>
+      <svg class="theme-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="theme-menu" id="theme-menu" hidden>
+      <button class="theme-option" data-theme="system">System</button>
+      <button class="theme-option" data-theme="light">Light</button>
+      <button class="theme-option" data-theme="dark">Dark</button>
     </div>
   </div>
 

@@ -13,7 +13,7 @@ services:
     environment:
       TZ: "Europe/Oslo"
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data
     expose:
       - "8000"
     networks:

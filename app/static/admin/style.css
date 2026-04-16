@@ -23,6 +23,37 @@
   --warning-border: rgba(245, 158, 11, 0.25);
   --radius: 8px;
   --radius-sm: 6px;
+  color-scheme: dark;
+}
+
+/* Light theme: system preference */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4f5f7;
+    --sidebar-bg: #eaecf0;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --surface-3: #e6e9ed;
+    --border: #d8dce3;
+    --text: #111111;
+    --text-muted: #5a6070;
+    --text-faint: #9aa0ac;
+    color-scheme: light;
+  }
+}
+
+/* Light theme: explicit selection */
+:root[data-theme="light"] {
+  --bg: #f4f5f7;
+  --sidebar-bg: #eaecf0;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --surface-3: #e6e9ed;
+  --border: #d8dce3;
+  --text: #111111;
+  --text-muted: #5a6070;
+  --text-faint: #9aa0ac;
+  color-scheme: light;
 }
 
 *, *::before, *::after {
@@ -63,6 +94,78 @@ a:hover {
   text-decoration: underline;
 }
 
+/* ── Theme toggle ────────────────────────────────────────────────────────────── */
+
+.theme-toggle {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 200;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 5px 10px;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+
+.theme-btn:hover {
+  border-color: var(--text-muted);
+}
+
+.theme-chevron {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.theme-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  min-width: 108px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  padding: 9px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.theme-option:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.theme-option.active {
+  color: var(--accent);
+}
+
 /* ── Layout ──────────────────────────────────────────────────────────────────── */
 
 .layout {
@@ -90,7 +193,7 @@ a:hover {
 }
 
 .main {
-  max-width: 960px;
+  max-width: 1100px;
   padding: 32px 40px 96px;
 }
 
@@ -781,14 +884,14 @@ input[type="file"].hidden-file {
 }
 
 .btn--primary {
-  background: var(--accent);
+  background: #3b82f6;
   color: #fff;
-  border-color: var(--accent);
+  border-color: #3b82f6;
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .btn--secondary {
@@ -847,17 +950,14 @@ input[type="file"].hidden-file {
   margin-top: 0;
 }
 
-/* ── Floating save bar ───────────────────────────────────────────────────────── */
+/* ── Floating save button ────────────────────────────────────────────────────── */
 
-.save-bar {
+.save-btn {
   position: fixed;
-  bottom: 0;
-  left: var(--sidebar-w);
-  right: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-  padding: 12px 40px;
-  z-index: 10;
+  bottom: 28px;
+  left: calc(var(--sidebar-w) + 40px);
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Toast notifications ─────────────────────────────────────────────────────── */
@@ -1024,6 +1124,19 @@ canvas.chart {
   margin-top: 12px;
 }
 
+.bar-tooltip {
+  position: fixed;
+  z-index: 300;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  color: var(--text);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .legend-item {
   display: flex;
   align-items: center;
@@ -1050,15 +1163,20 @@ canvas.chart {
   font-size: 0.875rem;
 }
 
-.log-table-wrap {
-  overflow-x: auto;
+.log-block {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  max-width: 1060px;
+}
+
+.log-table-wrap {
+  overflow-x: auto;
 }
 
 table.log-table {
   width: 100%;
+  min-width: 820px;
   border-collapse: collapse;
   font-size: 0.8rem;
 }
@@ -1102,7 +1220,7 @@ table.log-table {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-top: 1px solid var(--border);
   font-size: 0.8rem;
   color: var(--text-muted);
