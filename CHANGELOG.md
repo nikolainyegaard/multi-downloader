@@ -8,24 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `bgutil-ytdlp-pot-provider` sidecar: generates YouTube Proof of Origin tokens without a logged-in account, bypassing YouTube bot detection for public use
-- Per-domain concurrency limit (semaphore, max 2) on `/api/info` and `/api/download` to avoid hammering a single platform
-- Quality selector: split download button with a chevron-triggered dropdown listing the actual available resolutions (e.g. 1080p, 720p, 480p); defaults to the highest available
-- Download progress percentage shown in the button during file transfer (uses `Content-Length` from the streaming response)
-- Preview metadata fetch now triggers on keystroke with a 600ms debounce, covering typing and native paste
-- Invalid URL validation on the input field: red border and a red X button appear for non-empty input that is not a valid http/https URL; clicking X clears the field
-- Page content is top-aligned rather than vertically centered
+- Quality selector: split download button with a chevron-triggered dropdown listing available resolutions (e.g. 1080p, 720p, 480p); defaults to highest available
+- Download progress percentage shown in the button during file transfer
+- Preview metadata fetch triggers on keystroke with a 600ms debounce, in addition to paste
+- URL validation on the input field: red border and a clear button appear for non-http/https input
+- `bgutil-ytdlp-pot-provider` sidecar generates YouTube Proof of Origin tokens without a logged-in account, restoring YouTube downloads blocked by bot detection
+- Per-domain concurrency limit (max 2 simultaneous yt-dlp operations per platform) to reduce rate-limit exposure
+- Logo upload in the admin panel: AVIF or WebP, transparent padding trimmed, aspect ratio validated (1:1 to 5:1), scaled to fit 480x160
+- Favicon upload in the admin panel: center-cropped to square, saved at 32x32 and 180x180 PNG
+- `header_mode` config field: `"logo"` shows the uploaded logo in the page header, `"title"` shows the site title text (default)
+- `browser_title` config field: sets the browser tab title independently of the visible site title
+- `show_disclaimer_warning` config field: dismissible banner in the admin panel when `disclaimer.md` is absent; reset to `true` by "Reset to defaults"
+- `/disclaimer-guide` page on the admin app with setup steps for the legal disclaimer file
+- Per-field reset buttons in admin branding and content forms
+- Custom confirm dialog for destructive admin actions (logo delete, favicon delete, config reset)
+- Request logging: every `/api/info` and `/api/download` call written to `data/db/requests.db` with timestamp, IP, country, browser, OS, device type, endpoint, URL, success flag, filename, file size, duration, and error detail; logging failures never interrupt a download
+- Country resolution from IP via `GeoLite2-Country.mmdb` if placed in `data/db/`; column is null when the file is absent
+- Admin statistics tab: total request, download, and error counts; platform breakdown pie chart; stacked daily downloads/errors bar chart (14 days); both charts have hover tooltips
+- Admin logs tab: paginated request log table with timestamp, IP, country, platform, endpoint, duration, and status
+- Dark/light/system theme toggle on the admin page; shares `localStorage` with the public page so the preference persists across both
+- Accent color applied throughout the admin UI (hue derived from configured color); updates live when saved
+- Floating save button in admin appears only when the current form section has unsaved changes; hidden immediately after saving
+- `/assets/` route on both public and admin apps serves `data/static/` directly
 
 ### Changed
-- yt-dlp now uses a browser-like User-Agent, socket timeout (30s), retry limits (3 retries, 5 fragment retries), and a short inter-request sleep (0.5s) to reduce rate-limit exposure
-- `docker-compose.yml`: added `bgutil-provider` service and `downloader_net` internal network; downloader containers attach to both `caddy_net` and `downloader_net`
-- Minimum yt-dlp version pinned to `2025.05.22` (required for built-in POT provider framework)
+- Data directory restructured: flat `./config` bind mount replaced by `./data` with subdirectories (`config/`, `legal/`, `logs/`, `db/`, `static/`); `CONFIG_DIR` env var replaced by `DATA_DIR` (default `/app/data`); `disclaimer.md` moves to `legal/`; dev-mode admin logs move to `logs/`
 - `/api/info` response now includes a `qualities` array (`label`, `height`) derived from yt-dlp format info
-- `/api/download` now accepts an optional `height` field; omitting it (or passing `null`) selects the best available quality
-- Data directory restructured: flat `./config` bind mount replaced by `./data` with typed subdirectories (`config/`, `legal/`, `logs/`); `CONFIG_DIR` env var replaced by `DATA_DIR` (default `/app/data`); `disclaimer.md` moves from `config/` to `legal/`; dev-mode admin logs move from `config/` to `logs/`
-- On-startup migration: if the old `/app/config` path is mounted and new-path files are absent, `config.json` and `disclaimer.md` are copied to their new locations automatically; old files are left in place until the old bind mount is removed
+- `/api/download` now accepts an optional `height` field; omitting it or passing `null` selects best available quality
+- Logo and favicon asset files stored in `data/static/` rather than `data/config/`; `config/` now holds only `config.json`; startup migration moves existing files automatically
+- Public container data volume changed from `:ro` to read-write to support request logging
+- Page content is top-aligned rather than vertically centered
+- yt-dlp uses a browser-like User-Agent, 30s socket timeout, 3 retries, 5 fragment retries, and a 0.5s inter-request sleep to reduce rate-limit exposure
+- Minimum yt-dlp version pinned to `2025.05.22`
+- `docker-compose.yml`: added `bgutil-provider` service and `downloader_net` internal network; downloader containers attach to both `caddy_net` and `downloader_net`
 
-  **Breaking change for existing deployments:** update the bind mount in `docker-compose.yml` from `./config:/app/config` to `./data:/app/data`. To use the automatic migration, temporarily add the old mount alongside the new one on first boot, then remove it.
+  **Breaking change for existing deployments:** update the bind mount in `docker-compose.yml` from `./config:/app/config` to `./data:/app/data`. To use the automatic migration, add the old mount alongside the new one for first boot, then remove it.
 
 ## [0.2.0] - 2026-04-12
 
