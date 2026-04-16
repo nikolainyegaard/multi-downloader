@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Floating save button in admin appears only when the current form section has unsaved changes; hidden immediately after saving
 - `/assets/` route on both public and admin apps serves `data/static/` directly
 
+### Fixed
+- Admin statistics charts redraw continuously during window resize, matching the display refresh rate; previously the canvas would warp until resizing stopped
+
 ### Changed
 - Data directory restructured: flat `./config` bind mount replaced by `./data` with subdirectories (`config/`, `legal/`, `logs/`, `db/`, `static/`); `CONFIG_DIR` env var replaced by `DATA_DIR` (default `/app/data`); `disclaimer.md` moves to `legal/`; dev-mode admin logs move to `logs/`
 - `/api/info` response now includes a `qualities` array (`label`, `height`) derived from yt-dlp format info

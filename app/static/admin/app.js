@@ -1047,3 +1047,13 @@ function showToast(type, msg) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 reloadConfig().catch(err => console.error('init failed:', err));
+
+let _resizeRafPending = false;
+window.addEventListener('resize', () => {
+  if (_resizeRafPending) return;
+  _resizeRafPending = true;
+  requestAnimationFrame(() => {
+    redrawCharts();
+    _resizeRafPending = false;
+  });
+});
