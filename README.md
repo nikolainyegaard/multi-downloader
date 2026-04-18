@@ -10,6 +10,19 @@ Paste a link, tap Download, get the file. Powered by [yt-dlp](https://github.com
 
 ---
 
+## Features
+
+- Paste a URL, pick a quality, download the file directly to your device
+- Video preview with thumbnail, title, duration, and uploader before downloading
+- Quality selector: choose resolution (1080p, 720p, 480p, etc.) or let it default to best available
+- YouTube bot detection bypassed via `bgutil-ytdlp-pot-provider` sidecar (no account needed)
+- Admin panel: branding, logo/favicon upload, request statistics, and logs
+- Optional legal disclaimer page at `/legal-disclaimer` served from a Markdown file
+- Light/dark/system theme toggle; persists across the public and admin pages
+- Docker image for amd64 and arm64
+
+---
+
 ## Setup
 
 ### 1. Get the docker-compose file
@@ -31,8 +44,6 @@ services:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
     restart: unless-stopped
-    environment:
-      TZ: "Europe/Oslo"
     ports:
       - "127.0.0.1:8000:8000"
     networks:
@@ -44,7 +55,7 @@ networks:
   downloader_net:
 ```
 
-**With admin panel, no Caddy** (two containers, different host ports):
+**With admin panel** (two containers, different host ports):
 
 ```yaml
 services:
@@ -59,8 +70,6 @@ services:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
     restart: unless-stopped
-    environment:
-      TZ: "Europe/Oslo"
     volumes:
       - ./data:/app/data:ro
     ports:
@@ -75,7 +84,6 @@ services:
     container_name: multi-downloader-admin
     restart: unless-stopped
     environment:
-      TZ: "Europe/Oslo"
       ADMIN_MODE: "1"
     volumes:
       - ./data:/app/data:rw
@@ -92,56 +100,6 @@ networks:
 
 Public site at `http://localhost:8000`, admin at `http://localhost:8001`.
 
-**With admin panel and Caddy** (two containers, routed by subdomain; see [Admin panel](#admin-panel)):
-
-```yaml
-services:
-  bgutil-provider:
-    image: brainicism/bgutil-ytdlp-pot-provider:latest
-    container_name: bgutil-provider
-    restart: unless-stopped
-    networks:
-      - downloader_net
-
-  multi-downloader:
-    image: ghcr.io/nikolainyegaard/multi-downloader:latest
-    container_name: multi-downloader
-    restart: unless-stopped
-    environment:
-      TZ: "Europe/Oslo"
-    volumes:
-      - ./data:/app/data:ro
-    expose:
-      - "8000"
-    networks:
-      - caddy_net
-      - downloader_net
-    depends_on:
-      - bgutil-provider
-
-  multi-downloader-admin:
-    image: ghcr.io/nikolainyegaard/multi-downloader:latest
-    container_name: multi-downloader-admin
-    restart: unless-stopped
-    environment:
-      TZ: "Europe/Oslo"
-      ADMIN_MODE: "1"
-    volumes:
-      - ./data:/app/data:rw
-    expose:
-      - "8000"
-    networks:
-      - caddy_net
-      - downloader_net
-    depends_on:
-      - bgutil-provider
-
-networks:
-  caddy_net:
-    external: true
-  downloader_net:
-```
-
 ### 2. Start the containers
 
 ```bash
@@ -154,68 +112,62 @@ The app will be available at `http://localhost:8000` (or via your reverse proxy)
 
 1. Copy a video URL (YouTube, Twitter/X, TikTok, Instagram, Vimeo, and [1000+ more](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 2. Tap **Paste** or paste the URL into the input field
-3. Tap **Download** and the file downloads directly to your device
+3. Select a quality from the dropdown if needed; defaults to best available
+4. Tap **Download** and the file downloads directly to your device
 
-> **Note:** The Paste button uses the browser Clipboard API, which requires a secure context (HTTPS or localhost). Caddy handles TLS automatically; no extra configuration needed.
-
----
-
-## Caddy integration
-
-If Caddy runs directly on the host (not in Docker):
-
-```caddy
-dl.yourdomain.com {
-    reverse_proxy localhost:8000
-}
-```
-
-If Caddy is a Docker container on the same host, attach the downloader to Caddy's network and drop the `ports` block (already done in the two-container compose above):
-
-```caddy
-dl.yourdomain.com {
-    reverse_proxy multi-downloader:8000
-}
-```
+> **Note:** The Paste button uses the browser Clipboard API, which requires a secure context (HTTPS or localhost).
 
 ---
 
 ## Admin panel
 
-The admin panel runs as a second container from the same image. It exposes a settings UI for branding and content; changes take effect immediately without restarting the main container.
+The admin panel runs as a second container from the same image. It exposes a settings UI for branding, content, statistics, and logs; changes take effect immediately without restarting the main container.
 
-Access is gated by [Authentik](https://goauthentik.io/) via Caddy `forward_auth`. No auth code lives in the app itself.
+The admin container has no built-in authentication. Secure it at the network or reverse proxy level before exposing it.
 
-**Caddyfile:**
-```caddy
-dl.yourdomain.com {
-    reverse_proxy multi-downloader:8000
-}
-
-admin-dl.yourdomain.com {
-    forward_auth authentik:9000 {
-        uri /outpost.goauthentik.io/auth/caddy
-        copy_headers X-authentik-username X-authentik-groups
-    }
-    reverse_proxy multi-downloader-admin:8000
-}
-```
-
-Settings available in the admin UI:
+### Settings
 
 | Setting | Description |
 |---|---|
-| Site title | Displayed in the browser tab and page header |
-| Subtitle | Tagline below the title |
-| Accent color | Color picker for buttons and highlights |
+| Site title | Visible page header when header mode is "title" (default) |
+| Browser title | Browser tab title; defaults to site title if left empty |
+| Subtitle | Tagline below the title or logo |
+| Accent color | Color for buttons and highlights |
+| Header mode | Show the uploaded logo or the site title text in the header |
 | Show Paste button | Toggle the Paste button on/off |
-| Ko-fi username | Your Ko-fi username to show a support widget; leave empty to disable |
+| Ko-fi username | Ko-fi username for the support widget; leave empty to disable |
 
-Settings are stored in `./data/config/config.json` on the shared Docker volume. The public container mounts the volume read-only.
+Settings are stored in `./data/config/config.json` on the shared Docker volume. The public container mounts it read-only.
+
+### Logo and favicon
+
+Upload a logo (AVIF or WebP, aspect ratio 1:1 to 5:1) or favicon (any image; cropped to square) from the Branding tab. Assets are stored in `./data/static/` and served at `/assets/`. Deleting an asset reverts to the default text title or browser default favicon.
+
+### Statistics and logs
+
+The Statistics tab shows total request, download, and error counts; a platform breakdown chart; and a 14-day bar chart of downloads and errors. The Logs tab shows a paginated request log with timestamp, IP, country, platform, duration, and status.
+
+Country resolution requires a `GeoLite2-Country.mmdb` file placed in `./data/db/` (free account at [MaxMind](https://www.maxmind.com/en/geolite2/signup)).
 
 ### Legal disclaimer
 
-To show a "By downloading, you agree to our Legal Disclaimer" notice on the public site and serve the disclaimer at `/legal-disclaimer`, create a file at `./data/legal/disclaimer.md` and write your disclaimer in Markdown. Delete the file to remove the notice.
+To show a "By downloading, you agree to our Legal Disclaimer" notice on the public site and serve the disclaimer at `/legal-disclaimer`, create `./data/legal/disclaimer.md` and write your disclaimer in Markdown. Delete the file to remove the notice.
+
+---
+
+## Data directory
+
+```
+./data/
+  config/
+    config.json             # All settings; created automatically on first save
+  legal/
+    disclaimer.md           # Optional; enables /legal-disclaimer when present
+  static/                   # User-uploaded assets (logo, favicon)
+  db/
+    requests.db             # SQLite request log; created automatically
+    GeoLite2-Country.mmdb   # Optional; enables country resolution in logs
+```
 
 ---
 
@@ -247,21 +199,6 @@ ADMIN_MODE=1 uvicorn app.main:app --reload --port 8001
 ```
 
 Open `http://localhost:8000` (public) or `http://localhost:8001` (admin).
-
----
-
-## Building and publishing the image
-
-```bash
-docker buildx build \
-  --build-arg BUILD_VERSION=vX.Y.Z \
-  --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/nikolainyegaard/multi-downloader:latest \
-  -t ghcr.io/nikolainyegaard/multi-downloader:vX.Y.Z \
-  --push .
-```
-
-To authenticate with GHCR, see the [GitHub docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
 
 ---
 
