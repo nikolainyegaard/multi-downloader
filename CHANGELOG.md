@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-18
+
 ### Added
 - Quality selector: split download button with a chevron-triggered dropdown listing available resolutions (e.g. 1080p, 720p, 480p); defaults to highest available
 - Download progress percentage shown in the button during file transfer
@@ -87,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docker-compose.yml` for deployment behind Caddy reverse proxy
 - `BUILD_VERSION` build arg baked into image as `APP_VERSION` env var
 
-[Unreleased]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nikolainyegaard/multi-downloader/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nikolainyegaard/multi-downloader/releases/tag/v0.1.0
