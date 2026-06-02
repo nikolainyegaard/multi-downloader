@@ -1,5 +1,7 @@
 import os
 import re
+from pathlib import Path
+
 import yt_dlp
 
 # Shorthand tags for common services; anything else falls back to the extractor name.
@@ -13,6 +15,12 @@ _SERVICE_TAGS = {
 
 # URL of the bgutil PO token provider sidecar. Override via env var if needed.
 _BGUTIL_URL = os.getenv("BGUTIL_URL", "http://bgutil-provider:4416")
+
+# Optional Netscape-format cookies file. When present, passed to yt-dlp for all requests.
+# Required for age-gated content on Twitter/X (NSFW) and private/restricted content on
+# other platforms. Place a cookies.txt exported from a logged-in browser session at
+# $DATA_DIR/cookies.txt (default: /app/data/cookies.txt).
+_COOKIES_FILE = Path(os.getenv("DATA_DIR", "/app/data")) / "cookies.txt"
 
 # Options shared across all yt-dlp invocations.
 _COMMON_OPTS: dict = {
@@ -37,6 +45,13 @@ _COMMON_OPTS: dict = {
         },
     },
 }
+
+
+def _base_opts() -> dict:
+    opts = dict(_COMMON_OPTS)
+    if _COOKIES_FILE.exists():
+        opts["cookiefile"] = str(_COOKIES_FILE)
+    return opts
 
 
 def _service_tag(extractor: str) -> str:
@@ -81,7 +96,7 @@ def get_video_info(url: str) -> dict:
     Raises yt_dlp.utils.DownloadError on failure.
     """
     opts = {
-        **_COMMON_OPTS,
+        **_base_opts(),
         "skip_download": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -112,7 +127,7 @@ def download_video(url: str, output_dir: str, height: int | None = None) -> str:
         fmt = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
     opts = {
-        **_COMMON_OPTS,
+        **_base_opts(),
         # Use a simple unique name during download; renamed to the final format after.
         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
         "format": fmt,
