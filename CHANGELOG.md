@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Admin link in the public page footer, next to the version and GitHub link
 - External URL setting in the Authentication section: the public base URL of the service, used for the OIDC redirect URL shown in the settings and available for future links
 - Cookies management in the admin panel Content tab: upload, replace, or delete a Netscape-format cookies.txt passed to yt-dlp on every download; enables sites that need a login, such as NSFW posts on X. Uploads are validated and take effect immediately
 - Built-in admin login: username/password via ADMIN_USERNAME and ADMIN_PASSWORD, plus optional OpenID Connect configured from the new Authentication section in the admin panel (any OIDC provider; settings stored in data/oauth.json, restart to apply)

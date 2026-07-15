@@ -110,6 +110,8 @@ async def root():
         f'<p class="dev-banner">'
         f'{APP_VERSION} &bull; '
         f'<a href="https://github.com/nikolainyegaard/multi-downloader" target="_blank" rel="noopener">GitHub</a>'
+        f' &bull; '
+        f'<a href="/admin">Admin</a>'
         f'</p>'
     )
     html = html.replace("__DEV_BANNER__", dev_banner)
