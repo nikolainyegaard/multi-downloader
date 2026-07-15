@@ -69,9 +69,55 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=auth.secret_key(),
     session_cookie="mdl_admin",
-    max_age=7 * 24 * 3600,
+    max_age=auth.session_days * 24 * 3600,
     same_site="lax",
 )
+
+
+# ── Authentication settings API ────────────────────────────────────────────────
+# OIDC config lives in DATA_DIR/oauth.json and is edited from the
+# Authentication section. Changes apply after a container restart.
+
+class AuthConfigUpdate(BaseModel):
+    enabled: bool = False
+    discovery_url: str = ""
+    client_id: str = ""
+    client_secret: str = ""  # blank keeps the stored secret
+    session_lifetime_days: int = 7
+
+
+@app.get("/api/auth/config")
+async def get_auth_config():
+    cfg = auth.get_oauth_config()
+    return {
+        "enabled": cfg["enabled"],
+        "enabled_runtime": auth.oidc_enabled,
+        "client_id": cfg["client_id"],
+        "client_secret_set": bool(cfg["client_secret"]),
+        "discovery_url": cfg["discovery_url"],
+        "session_lifetime_days": cfg["session_lifetime_days"],
+        "password_login": auth.password_enabled,
+    }
+
+
+@app.post("/api/auth/config")
+async def save_auth_config(update: AuthConfigUpdate):
+    cfg = auth.get_oauth_config()
+    cfg["enabled"] = update.enabled
+    cfg["discovery_url"] = update.discovery_url.strip()
+    cfg["client_id"] = update.client_id.strip()
+    if update.client_secret:
+        cfg["client_secret"] = update.client_secret.strip()
+    cfg["session_lifetime_days"] = max(1, min(365, update.session_lifetime_days or 7))
+
+    if cfg["enabled"] and not all([cfg["client_id"], cfg["client_secret"], cfg["discovery_url"]]):
+        raise HTTPException(
+            status_code=400,
+            detail="Discovery URL, client ID and client secret are all required to enable OIDC",
+        )
+
+    auth.save_oauth_config(cfg)
+    return {"ok": True, "restart_required": True}
 
 STATIC_DIR = Path(__file__).parent / "static" / "admin"
 APP_VERSION = os.getenv("APP_VERSION", "dev")

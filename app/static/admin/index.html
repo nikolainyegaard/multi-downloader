@@ -41,6 +41,13 @@
             Logs
           </button>
         </div>
+        <div class="nav-group">
+          <span class="nav-label">Access</span>
+          <button class="nav-item" data-section="authentication">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Authentication
+          </button>
+        </div>
         <div class="nav-group nav-group--end">
           <button class="nav-item nav-item--danger" data-section="danger">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -255,6 +262,81 @@
             <p>Every API call logged with IP, country, platform, and outcome.</p>
           </div>
           <div id="logs-body"></div>
+        </section>
+
+        <!-- Section: Authentication -->
+        <section id="section-authentication" class="section" hidden>
+          <div class="section-head">
+            <h1>Authentication</h1>
+            <p>OpenID Connect login for this admin panel, via any OIDC provider (Authentik, Keycloak, Pocket ID, and others). Username/password login is set with the <code>ADMIN_USERNAME</code> and <code>ADMIN_PASSWORD</code> environment variables.</p>
+          </div>
+
+          <div id="auth-restart-banner" class="banner banner--warning" hidden>
+            <div class="banner-body">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Saved settings differ from the running configuration. Restart the container to apply.</span>
+            </div>
+          </div>
+
+          <h2 class="settings-group">OpenID Connect</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Enable OIDC login</span>
+                <span class="settings-row-desc">Shows an OpenID Connect button on the login page. Register the redirect URL <code>https://your-domain/admin/oidc/callback</code> with the provider.</span>
+              </div>
+              <div class="settings-row-control settings-row-control--end">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auth_enabled" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Discovery URL <span class="field-required-mark">*</span></span>
+                <span class="settings-row-desc">The provider's OpenID Configuration URL</span>
+              </div>
+              <div class="settings-row-control">
+                <input type="text" id="auth_discovery_url" autocomplete="off" spellcheck="false" placeholder="https://auth.example.com/application/o/my-app/.well-known/openid-configuration" />
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Client ID <span class="field-required-mark">*</span></span>
+              </div>
+              <div class="settings-row-control">
+                <input type="text" id="auth_client_id" autocomplete="off" spellcheck="false" placeholder="your-client-id" />
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Client secret <span class="field-required-mark">*</span></span>
+                <span class="settings-row-desc" id="auth-secret-status"></span>
+              </div>
+              <div class="settings-row-control">
+                <div style="display: flex; gap: 8px; align-items: center">
+                  <input type="password" id="auth_client_secret" autocomplete="new-password" spellcheck="false" placeholder="leave blank to keep existing" style="flex: 1" />
+                  <button id="auth-secret-toggle" class="btn" type="button">Show</button>
+                </div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Session lifetime</span>
+                <span class="settings-row-desc">Days before an admin login expires; applies to both login methods</span>
+              </div>
+              <div class="settings-row-control">
+                <input type="number" id="auth_session_days" min="1" max="365" value="7" style="max-width: 90px" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section-actions section-actions--inline">
+            <button id="auth-save-btn" class="btn btn--primary">Save</button>
+          </div>
+
+          <p class="card-desc" id="auth-no-password-note" hidden>Password login is off (no <code>ADMIN_PASSWORD</code> in the environment). If the OIDC provider breaks, set <code>ADMIN_PASSWORD</code> in docker-compose.yml and restart to get back in, then fix the settings here.</p>
         </section>
 
         <!-- Section: Danger -->

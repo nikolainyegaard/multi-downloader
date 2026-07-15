@@ -82,6 +82,22 @@ def main():
         status, loc, _ = c.request("GET", "/admin/oidc/login")
         print("OIDC-DISABLED:", status, loc, "OK" if status in (302, 307) and loc.endswith("/admin/login") else "FAIL")
 
+        status, _, body = c.request("GET", "/admin/api/auth/config")
+        print("AUTH-CFG-GET:", status, "OK" if status == 200 and '"client_secret_set": false' in body.replace("'", '"') or '"client_secret_set":false' in body else body[:120])
+
+        import json as _json
+        payload = _json.dumps({"enabled": True, "discovery_url": "", "client_id": "", "client_secret": "", "session_lifetime_days": 7}).encode()
+        status, _, body = c.request("POST", "/admin/api/auth/config", payload, "application/json")
+        print("AUTH-CFG-INVALID:", status, "OK" if status == 400 else body[:120])
+
+        payload = _json.dumps({"enabled": True, "discovery_url": "https://idp.example/.well-known/openid-configuration", "client_id": "cid", "client_secret": "sec", "session_lifetime_days": 14}).encode()
+        status, _, body = c.request("POST", "/admin/api/auth/config", payload, "application/json")
+        print("AUTH-CFG-SAVE:", status, "OK" if status == 200 and "restart_required" in body else body[:120])
+
+        status, _, body = c.request("GET", "/admin/api/auth/config")
+        ok = '"client_id":"cid"' in body.replace(" ", "") and '"client_secret_set":true' in body.replace(" ", "") and '"enabled_runtime":false' in body.replace(" ", "")
+        print("AUTH-CFG-PERSIST:", status, "OK" if ok else body[:200])
+
         status, loc, _ = c.request("POST", "/admin/logout")
         print("LOGOUT:", status, loc, "OK" if status == 303 else "FAIL")
 

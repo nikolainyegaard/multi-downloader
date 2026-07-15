@@ -321,8 +321,9 @@ function showSection(name) {
 
   updateSaveBar();
 
-  if (name === 'statistics' && !statsLoaded) loadStats();
-  if (name === 'logs'       && !logsLoaded)  loadLogs(1);
+  if (name === 'statistics'     && !statsLoaded) loadStats();
+  if (name === 'logs'           && !logsLoaded)  loadLogs(1);
+  if (name === 'authentication' && !authLoaded)  loadAuthSettings();
 }
 
 document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
@@ -1131,6 +1132,83 @@ function showToast(type, msg) {
     setTimeout(() => toast.remove(), 180);
   }, 3000);
 }
+
+// ── Authentication settings ───────────────────────────────────────────────────
+// OIDC login config, stored server-side in data/oauth.json.
+// Changes require a container restart to take effect.
+
+let authLoaded = false;
+
+async function loadAuthSettings() {
+  let data;
+  try {
+    data = await apiGet('api/auth/config');
+  } catch (err) {
+    showToast(`Failed to load auth settings: ${err.message}`, 'error');
+    return;
+  }
+  authLoaded = true;
+
+  document.getElementById('auth_enabled').checked = data.enabled;
+  document.getElementById('auth_discovery_url').value = data.discovery_url || '';
+  document.getElementById('auth_client_id').value = data.client_id || '';
+  document.getElementById('auth_client_secret').value = '';
+  document.getElementById('auth_session_days').value = data.session_lifetime_days || 7;
+  document.getElementById('auth-secret-status').textContent = data.client_secret_set
+    ? 'A client secret is saved. Leave blank to keep it.'
+    : 'No client secret saved.';
+
+  // Warn when the saved config differs from what is currently running
+  document.getElementById('auth-restart-banner').hidden = data.enabled === data.enabled_runtime;
+  // Warn when disabling password login is impossible (no OIDC as fallback)
+  document.getElementById('auth-no-password-note').hidden = data.password_login;
+}
+
+function toggleAuthSecret() {
+  const input = document.getElementById('auth_client_secret');
+  const btn = document.getElementById('auth-secret-toggle');
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+}
+
+async function saveAuthSettings() {
+  const enabled = document.getElementById('auth_enabled').checked;
+  const discoveryUrl = document.getElementById('auth_discovery_url').value.trim();
+  const clientId = document.getElementById('auth_client_id').value.trim();
+  const clientSecret = document.getElementById('auth_client_secret').value;
+  const sessionDays = parseInt(document.getElementById('auth_session_days').value, 10) || 7;
+
+  if (enabled && (!discoveryUrl || !clientId)) {
+    showToast('Discovery URL and client ID are required to enable OIDC', 'error');
+    return;
+  }
+
+  try {
+    await apiPost('api/auth/config', {
+      enabled,
+      discovery_url: discoveryUrl,
+      client_id: clientId,
+      client_secret: clientSecret,
+      session_lifetime_days: sessionDays,
+    });
+  } catch (err) {
+    showToast(`Save failed: ${err.message}`, 'error');
+    return;
+  }
+
+  showToast('Saved. Restart the container to apply.');
+  document.getElementById('auth_client_secret').value = '';
+  if (document.getElementById('auth_client_secret').type === 'text') toggleAuthSecret();
+  if (clientSecret) {
+    document.getElementById('auth-secret-status').textContent = 'A client secret is saved. Leave blank to keep it.';
+  }
+  // All auth changes require a restart, so always show the banner after saving
+  document.getElementById('auth-restart-banner').hidden = false;
+}
+
+document.getElementById('auth-save-btn')?.addEventListener('click', saveAuthSettings);
+document.getElementById('auth-secret-toggle')?.addEventListener('click', toggleAuthSecret);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

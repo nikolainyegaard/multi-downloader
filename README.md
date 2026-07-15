@@ -88,9 +88,11 @@ The admin panel lives at `/admin` in the same container and exposes a settings U
 Two login methods, either or both:
 
 - **Username/password**: set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment
-- **OpenID Connect**: set `OIDC_DISCOVERY_URL`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET`; a "OpenID Connect" button appears on the login page. Works with any OIDC provider (Authentik, Keycloak, Pocket ID, ...). Register the redirect URL `https://your-domain/admin/oidc/callback` with the provider.
+- **OpenID Connect**: configured in the admin panel under **Authentication** (discovery URL, client ID, client secret) and stored in `data/oauth.json`. Works with any OIDC provider (Authentik, Keycloak, Pocket ID, and others). Register the redirect URL `https://your-domain/admin/oidc/callback` with the provider. Changes apply after restarting the container.
 
-The admin panel is disabled (404) unless at least one method is configured. Sessions last 7 days.
+The admin panel is disabled (404) unless at least one method is configured. Session lifetime is set in the Authentication section (default 7 days).
+
+**Locked out?** If OIDC is your only login method and the provider breaks, set `ADMIN_PASSWORD` in the environment and restart; sign in with the password and fix the settings.
 
 ### Settings
 
@@ -132,6 +134,8 @@ To show a "By downloading, you agree to our Legal Disclaimer" notice on the publ
 
 ```
 ./data/
+  .secret_key               # Session signing key; created automatically
+  oauth.json                # OIDC login settings; created on first save from the admin panel
   config/
     config.json             # All settings; created automatically on first save
   legal/
@@ -155,10 +159,7 @@ Environment variables in `docker-compose.yml`:
 | `TZ` | `UTC` | Container timezone for log timestamps, e.g. `Europe/Oslo`. |
 | `WEB_PORT` | `8000` | Port the app listens on inside the container. |
 | `ADMIN_USERNAME` | `admin` | Username for admin password login. |
-| `ADMIN_PASSWORD` | unset | Password for admin login; enables the admin panel when set. |
-| `OIDC_DISCOVERY_URL` | unset | OIDC `.well-known/openid-configuration` URL; enables the OpenID Connect login button together with the two variables below. |
-| `OIDC_CLIENT_ID` | unset | OIDC client ID. |
-| `OIDC_CLIENT_SECRET` | unset | OIDC client secret. |
+| `ADMIN_PASSWORD` | unset | Password for admin login; enables the admin panel when set. OIDC login is configured in the admin panel, not here. |
 | `SECRET_KEY` | auto | Session signing key; generated once into `data/.secret_key` if unset. |
 | `DATA_DIR` | `/app/data` | Path to the data volume mount point inside the container. |
 

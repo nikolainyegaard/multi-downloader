@@ -1,8 +1,9 @@
 """Session auth for the admin panel: username/password plus optional OIDC.
 
-The OIDC flow (authlib, discovery URL, PKCE S256) is ported from
-social-downloader and adapted to Starlette. Routes, env vars and login page
-layout are unified with nyshare's admin auth:
+The OIDC flow and its config storage (oauth.json, managed from the admin UI,
+restart required to apply) are ported from social-downloader and adapted to
+Starlette. Routes, config fields and login page layout are unified with
+nyshare's admin auth:
 
   GET  /admin/login          login page
   POST /admin/login          password login
@@ -10,12 +11,14 @@ layout are unified with nyshare's admin auth:
   GET  /admin/oidc/callback  code exchange, create session
   POST /admin/logout         destroy session
 
-Env vars: ADMIN_USERNAME (default "admin"), ADMIN_PASSWORD,
-OIDC_DISCOVERY_URL, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET.
-The admin panel is enabled when a password or OIDC is configured.
+Password login comes from ADMIN_USERNAME/ADMIN_PASSWORD env vars (also the
+lockout fallback when OIDC breaks). OIDC is configured in the admin panel
+under Authentication and stored in DATA_DIR/oauth.json. The admin panel is
+enabled when a password or OIDC is configured.
 """
 
 import hmac
+import json
 import os
 import secrets
 from pathlib import Path
@@ -29,13 +32,49 @@ from app.config import DATA_DIR, load_config
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
-OIDC_DISCOVERY_URL = os.getenv("OIDC_DISCOVERY_URL", "")
-OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "")
-OIDC_CLIENT_SECRET = os.getenv("OIDC_CLIENT_SECRET", "")
+_OAUTH_CONFIG_PATH = DATA_DIR / "oauth.json"
+
+OAUTH_DEFAULTS = {
+    "enabled": False,
+    "client_id": "",
+    "client_secret": "",
+    "discovery_url": "",
+    "session_lifetime_days": 7,
+}
+
+
+def get_oauth_config() -> dict:
+    """Read oauth.json and merge with defaults. Safe to call frequently."""
+    try:
+        with open(_OAUTH_CONFIG_PATH) as f:
+            data = json.load(f)
+        return {**OAUTH_DEFAULTS, **data}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return dict(OAUTH_DEFAULTS)
+
+
+def save_oauth_config(cfg: dict) -> None:
+    """Persist oauth.json atomically."""
+    _OAUTH_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = str(_OAUTH_CONFIG_PATH) + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(cfg, f, indent=2)
+    os.replace(tmp, _OAUTH_CONFIG_PATH)
+
+
+# Captured at import time; a restart is required for oauth.json changes to
+# take effect (the Authentication settings UI says so).
+_oauth_cfg = get_oauth_config()
 
 password_enabled = bool(ADMIN_PASSWORD)
-oidc_enabled = bool(OIDC_DISCOVERY_URL and OIDC_CLIENT_ID and OIDC_CLIENT_SECRET)
+oidc_enabled = bool(
+    _oauth_cfg["enabled"]
+    and _oauth_cfg["discovery_url"]
+    and _oauth_cfg["client_id"]
+    and _oauth_cfg["client_secret"]
+)
 admin_enabled = password_enabled or oidc_enabled
+session_days = max(1, min(365, int(_oauth_cfg.get("session_lifetime_days", 7) or 7)))
 
 _LOGIN_HTML = Path(__file__).parent / "static" / "admin" / "login.html"
 
@@ -59,9 +98,9 @@ oauth = OAuth()
 if oidc_enabled:
     oauth.register(
         name="oidc",
-        client_id=OIDC_CLIENT_ID,
-        client_secret=OIDC_CLIENT_SECRET,
-        server_metadata_url=OIDC_DISCOVERY_URL,
+        client_id=_oauth_cfg["client_id"],
+        client_secret=_oauth_cfg["client_secret"],
+        server_metadata_url=_oauth_cfg["discovery_url"],
         client_kwargs={
             "scope": "openid profile email",
             "code_challenge_method": "S256",  # PKCE

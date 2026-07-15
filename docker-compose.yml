@@ -12,13 +12,11 @@ services:
     restart: unless-stopped
     environment:
       TZ: "Europe/Oslo"
-      # Admin panel at /admin. Enabled when a password or OIDC is configured.
+      # Admin panel at /admin. OIDC login is configured in the panel itself
+      # (Authentication section); the password here is also the fallback if
+      # the OIDC provider breaks.
       ADMIN_USERNAME: "admin"
       ADMIN_PASSWORD: "changeme"
-      # Optional OIDC login (Authentik, Keycloak, Pocket ID, ...):
-      # OIDC_DISCOVERY_URL: "https://auth.example.com/application/o/multi-downloader/.well-known/openid-configuration"
-      # OIDC_CLIENT_ID: ""
-      # OIDC_CLIENT_SECRET: ""
     volumes:
       - ./data:/app/data
     expose:
