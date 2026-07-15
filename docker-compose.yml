@@ -12,11 +12,12 @@ services:
     restart: unless-stopped
     environment:
       TZ: "Europe/Oslo"
-      # Admin panel at /admin. OIDC login is configured in the panel itself
-      # (Authentication section); the password here is also the fallback if
-      # the OIDC provider breaks.
-      ADMIN_USERNAME: "admin"
-      ADMIN_PASSWORD: "changeme"
+      # Admin panel at /admin. Credentials are generated on first launch and
+      # printed to the container output (docker logs multi-downloader); OIDC
+      # is configured in the panel's Authentication section.
+      # Locked out? Uncomment, restart, sign in with the printed credentials,
+      # then remove it again:
+      # AUTH_RESET: "1"
     volumes:
       - ./data:/app/data
     expose:

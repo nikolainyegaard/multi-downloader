@@ -76,6 +76,14 @@
           <button id="dismiss-disclaimer" class="banner-dismiss">Don't show again</button>
         </div>
 
+        <!-- Generated password banner -->
+        <div id="banner-password" class="banner banner--warning" hidden>
+          <div class="banner-body">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>You signed in with a generated password. <a href="#" id="banner-password-link">Set a new one</a> in the Authentication section.</span>
+          </div>
+        </div>
+
         <!-- Section: Branding -->
         <section id="section-branding" class="section">
           <div class="section-head">
@@ -268,13 +276,46 @@
         <section id="section-authentication" class="section" hidden>
           <div class="section-head">
             <h1>Authentication</h1>
-            <p>OpenID Connect login for this admin panel, via any OIDC provider (Authentik, Keycloak, Pocket ID, and others). Username/password login is set with the <code>ADMIN_USERNAME</code> and <code>ADMIN_PASSWORD</code> environment variables.</p>
+            <p>Password and OpenID Connect login for this admin panel (any OIDC provider: Authentik, Keycloak, Pocket ID, and others). At least one method must stay enabled.</p>
           </div>
 
           <div id="auth-restart-banner" class="banner banner--warning" hidden>
             <div class="banner-body">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <span>Saved settings differ from the running configuration. Restart the container to apply.</span>
+            </div>
+          </div>
+
+          <h2 class="settings-group">Password login</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Enable password login</span>
+                <span class="settings-row-desc">Sign in with the username and password below. Changes apply immediately. Can only be turned off while OIDC login is active.</span>
+              </div>
+              <div class="settings-row-control settings-row-control--end">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auth_password_login" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">Username</span>
+              </div>
+              <div class="settings-row-control">
+                <input type="text" id="auth_admin_username" autocomplete="off" spellcheck="false" placeholder="admin" />
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">New password</span>
+                <span class="settings-row-desc" id="auth-password-status"></span>
+              </div>
+              <div class="settings-row-control">
+                <input type="password" id="auth_new_password" autocomplete="new-password" spellcheck="false" placeholder="leave blank to keep current" />
+              </div>
             </div>
           </div>
 
@@ -349,7 +390,7 @@
             <button id="auth-save-btn" class="btn btn--primary">Save</button>
           </div>
 
-          <p class="card-desc" id="auth-no-password-note" hidden>Password login is off (no <code>ADMIN_PASSWORD</code> in the environment). If the OIDC provider breaks, set <code>ADMIN_PASSWORD</code> in docker-compose.yml and restart to get back in, then fix the settings here.</p>
+          <p class="card-desc">Locked out? Set <code>AUTH_RESET: "1"</code> in docker-compose.yml and restart: OIDC is disabled and fresh admin credentials are printed to the container output. Remove the variable after signing in.</p>
         </section>
 
         <!-- Section: Danger -->

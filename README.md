@@ -42,9 +42,6 @@ services:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
     restart: unless-stopped
-    environment:
-      ADMIN_USERNAME: "admin"
-      ADMIN_PASSWORD: "changeme"
     volumes:
       - ./data:/app/data
     ports:
@@ -58,7 +55,7 @@ networks:
   downloader_net:
 ```
 
-Public site at `http://localhost:8000`, admin at `http://localhost:8000/admin`. Leave out `ADMIN_PASSWORD` (and the OIDC variables) to disable the admin panel entirely.
+Public site at `http://localhost:8000`, admin at `http://localhost:8000/admin`. Admin credentials are generated on first launch and printed to the container output (`docker logs multi-downloader`).
 
 ### 2. Start the containers
 
@@ -85,14 +82,14 @@ The admin panel lives at `/admin` in the same container and exposes a settings U
 
 ### Signing in
 
-Two login methods, either or both:
+Two login methods, either or both, managed in the admin panel's Authentication section:
 
-- **Username/password**: set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment
-- **OpenID Connect**: configured in the admin panel under **Authentication** (discovery URL, client ID, client secret) and stored in `data/oauth.json`. Works with any OIDC provider (Authentik, Keycloak, Pocket ID, and others). Register the redirect URL `https://your-domain/admin/oidc/callback` with the provider. Changes apply after restarting the container.
+- **Username/password**: credentials are generated on first launch and printed to the container output (`docker logs multi-downloader`). Sign in with them and set your own password when prompted. Username and password changes apply immediately.
+- **OpenID Connect**: discovery URL, client ID and client secret, stored in `data/oauth.json`. Works with any OIDC provider (Authentik, Keycloak, Pocket ID, and others). Register the redirect URL `https://your-domain/admin/oidc/callback` with the provider (shown live in the settings when the external URL is set). Changes apply after restarting the container.
 
-The admin panel is disabled (404) unless at least one method is configured. Session lifetime is set in the Authentication section (default 7 days).
+At least one method must stay enabled; disabling password login requires OIDC to be enabled and already running. Session lifetime is set in the Authentication section (default 7 days).
 
-**Locked out?** If OIDC is your only login method and the provider breaks, set `ADMIN_PASSWORD` in the environment and restart; sign in with the password and fix the settings.
+**Locked out?** Set `AUTH_RESET=1` in the environment and restart: OIDC is disabled and fresh admin credentials are printed to the container output. Sign in, fix the settings, then remove the variable.
 
 ### Settings
 
@@ -158,8 +155,7 @@ Environment variables in `docker-compose.yml`:
 |---|---|---|
 | `TZ` | `UTC` | Container timezone for log timestamps, e.g. `Europe/Oslo`. |
 | `WEB_PORT` | `8000` | Port the app listens on inside the container. |
-| `ADMIN_USERNAME` | `admin` | Username for admin password login. |
-| `ADMIN_PASSWORD` | unset | Password for admin login; enables the admin panel when set. OIDC login is configured in the admin panel, not here. |
+| `AUTH_RESET` | unset | Set to `1` and restart to disable OIDC and regenerate admin credentials (printed to the container output). Remove after signing in. |
 | `SECRET_KEY` | auto | Session signing key; generated once into `data/.secret_key` if unset. |
 | `DATA_DIR` | `/app/data` | Path to the data volume mount point inside the container. |
 
@@ -171,7 +167,7 @@ Requires Python 3.10+ and [ffmpeg](https://ffmpeg.org/).
 
 ```bash
 pip install -r requirements.txt
-ADMIN_PASSWORD=changeme uvicorn app.main:app --reload
+DATA_DIR=./data uvicorn app.main:app --reload
 ```
 
 Open `http://localhost:8000` (public) or `http://localhost:8000/admin` (admin).

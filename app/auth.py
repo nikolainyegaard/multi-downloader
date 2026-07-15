@@ -11,12 +11,15 @@ nyshare's admin auth:
   GET  /admin/oidc/callback  code exchange, create session
   POST /admin/logout         destroy session
 
-Password login comes from ADMIN_USERNAME/ADMIN_PASSWORD env vars (also the
-lockout fallback when OIDC breaks). OIDC is configured in the admin panel
-under Authentication and stored in DATA_DIR/oauth.json. The admin panel is
-enabled when a password or OIDC is configured.
+Credentials are stored in DATA_DIR/oauth.json, never in the environment: on
+first launch (or with AUTH_RESET=1 set) a random admin password is generated,
+printed to the container output, and flagged for change after sign-in. Both
+login methods are toggled from the admin panel's Authentication section;
+OIDC changes apply after a restart, password changes immediately. The admin
+panel is enabled when at least one method is usable.
 """
 
+import hashlib
 import hmac
 import json
 import os
@@ -29,8 +32,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import DATA_DIR, load_config
 
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+AUTH_RESET = os.getenv("AUTH_RESET", "").lower() in ("1", "true", "yes")
 
 _OAUTH_CONFIG_PATH = DATA_DIR / "oauth.json"
 
@@ -43,7 +45,28 @@ OAUTH_DEFAULTS = {
     # Public base URL of this service (e.g. https://dl.example.com); used for
     # the OIDC redirect URL and available for future external links
     "external_url": "",
+    "password_login": True,
+    "admin_username": "admin",
+    "admin_password_hash": "",
+    "must_change_password": False,
 }
+
+_PBKDF2_ITERATIONS = 600_000
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _PBKDF2_ITERATIONS)
+    return f"pbkdf2:{_PBKDF2_ITERATIONS}:{salt.hex()}:{dk.hex()}"
+
+
+def verify_password(stored: str, password: str) -> bool:
+    try:
+        _, iterations, salt_hex, hash_hex = stored.split(":")
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt_hex), int(iterations))
+        return hmac.compare_digest(dk.hex(), hash_hex)
+    except Exception:
+        return False
 
 
 def get_oauth_config() -> dict:
@@ -65,19 +88,60 @@ def save_oauth_config(cfg: dict) -> None:
     os.replace(tmp, _OAUTH_CONFIG_PATH)
 
 
-# Captured at import time; a restart is required for oauth.json changes to
-# take effect (the Authentication settings UI says so).
+def _print_credentials(title: str, password: str, footer: str) -> None:
+    print("=" * 54, flush=True)
+    print(title, flush=True)
+    print("  Username: admin", flush=True)
+    print(f"  Password: {password}", flush=True)
+    print(footer, flush=True)
+    print("=" * 54, flush=True)
+
+
+# Startup: read the config once (OIDC settings need a restart to apply) and
+# generate admin credentials when none exist or AUTH_RESET is set.
 _oauth_cfg = get_oauth_config()
 
-password_enabled = bool(ADMIN_PASSWORD)
+if AUTH_RESET:
+    _oauth_cfg["enabled"] = False
+    _oauth_cfg["password_login"] = True
+    _pw = secrets.token_urlsafe(12)
+    _oauth_cfg["admin_username"] = "admin"
+    _oauth_cfg["admin_password_hash"] = hash_password(_pw)
+    _oauth_cfg["must_change_password"] = True
+    save_oauth_config(_oauth_cfg)
+    _print_credentials(
+        "AUTH_RESET is set: OIDC disabled, admin credentials reset",
+        _pw,
+        "Remove AUTH_RESET from the environment after signing in.",
+    )
+elif _oauth_cfg["password_login"] and not _oauth_cfg["admin_password_hash"]:
+    _pw = secrets.token_urlsafe(12)
+    _oauth_cfg["admin_password_hash"] = hash_password(_pw)
+    _oauth_cfg["must_change_password"] = True
+    save_oauth_config(_oauth_cfg)
+    _print_credentials(
+        "Admin credentials generated (first launch)",
+        _pw,
+        "Sign in at /admin/login and set a new password in the Authentication section.",
+    )
+
 oidc_enabled = bool(
     _oauth_cfg["enabled"]
     and _oauth_cfg["discovery_url"]
     and _oauth_cfg["client_id"]
     and _oauth_cfg["client_secret"]
 )
-admin_enabled = password_enabled or oidc_enabled
 session_days = max(1, min(365, int(_oauth_cfg.get("session_lifetime_days", 7) or 7)))
+
+
+def password_login_enabled() -> bool:
+    """Read fresh: password and username changes apply without a restart."""
+    cfg = get_oauth_config()
+    return bool(cfg["password_login"] and cfg["admin_password_hash"])
+
+
+def admin_enabled() -> bool:
+    return password_login_enabled() or oidc_enabled
 
 _LOGIN_HTML = Path(__file__).parent / "static" / "admin" / "login.html"
 
@@ -132,12 +196,13 @@ def _callback_uri(request: Request) -> str:
 
 def render_login(error: str = "") -> HTMLResponse:
     cfg = load_config()
+    pw = password_login_enabled()
     html = _LOGIN_HTML.read_text()
     html = html.replace("__SITE_TITLE__", cfg.site_title)
     html = html.replace("__ERROR__", error)
     html = html.replace("__ERROR_HIDDEN__", "" if error else "hidden")
-    html = html.replace("__PASSWORD_HIDDEN__", "" if password_enabled else "hidden")
-    html = html.replace("__DIVIDER_HIDDEN__", "" if (password_enabled and oidc_enabled) else "hidden")
+    html = html.replace("__PASSWORD_HIDDEN__", "" if pw else "hidden")
+    html = html.replace("__DIVIDER_HIDDEN__", "" if (pw and oidc_enabled) else "hidden")
     html = html.replace("__OIDC_HIDDEN__", "" if oidc_enabled else "hidden")
     return HTMLResponse(html, status_code=401 if error else 200)
 
@@ -157,7 +222,12 @@ async def login_submit(request: Request):
     form = await request.form()
     username = str(form.get("username", ""))
     password = str(form.get("password", ""))
-    if password_enabled and _safe_equal(username, ADMIN_USERNAME) and _safe_equal(password, ADMIN_PASSWORD):
+    cfg = get_oauth_config()
+    if (
+        password_login_enabled()
+        and _safe_equal(username, cfg["admin_username"])
+        and verify_password(cfg["admin_password_hash"], password)
+    ):
         request.session.clear()
         request.session["admin"] = {"name": username, "via": "password"}
         return RedirectResponse(_root(request) + "/", status_code=303)

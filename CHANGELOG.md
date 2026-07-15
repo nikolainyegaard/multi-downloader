@@ -8,10 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Admin credentials are generated on first launch and printed to the container output; after signing in, a prompt asks for a new password. ADMIN_USERNAME and ADMIN_PASSWORD env vars are gone; username and password are managed in the Authentication section and stored hashed
+- Password login can be disabled for OIDC-only setups; saving validates that at least one login method stays enabled, and password login can only be turned off while OIDC is active
+- AUTH_RESET=1 env var: on next launch, disables OIDC, regenerates admin credentials and prints them to the container output (the lockout hatch)
 - Admin link in the public page footer, next to the version and GitHub link
 - External URL setting in the Authentication section: the public base URL of the service, used for the OIDC redirect URL shown in the settings and available for future links
 - Cookies management in the admin panel Content tab: upload, replace, or delete a Netscape-format cookies.txt passed to yt-dlp on every download; enables sites that need a login, such as NSFW posts on X. Uploads are validated and take effect immediately
-- Built-in admin login: username/password via ADMIN_USERNAME and ADMIN_PASSWORD, plus optional OpenID Connect configured from the new Authentication section in the admin panel (any OIDC provider; settings stored in data/oauth.json, restart to apply)
+- Built-in admin login: username/password plus optional OpenID Connect configured from the new Authentication section in the admin panel (any OIDC provider; settings stored in data/oauth.json, restart to apply)
 - Configurable admin session lifetime in the Authentication section
 - Log out button in the admin sidebar
 

@@ -52,9 +52,9 @@ async def require_admin(request: Request, call_next):
         path = path[len(root):] or "/"
     if path in _PUBLIC_PATHS or path.startswith("/static/"):
         return await call_next(request)
-    if not auth.admin_enabled:
+    if not auth.admin_enabled():
         return JSONResponse(
-            {"detail": "Admin panel disabled. Set ADMIN_PASSWORD or the OIDC env vars."},
+            {"detail": "Admin panel disabled: no login method is configured. Set AUTH_RESET=1 and restart to regenerate credentials."},
             status_code=404,
         )
     if not request.session.get("admin"):
@@ -85,6 +85,9 @@ class AuthConfigUpdate(BaseModel):
     client_secret: str = ""  # blank keeps the stored secret
     session_lifetime_days: int = 7
     external_url: str = ""
+    password_login: bool = True
+    admin_username: str = "admin"
+    new_password: str = ""  # blank keeps the stored password
 
 
 @app.get("/api/auth/config")
@@ -98,7 +101,10 @@ async def get_auth_config():
         "discovery_url": cfg["discovery_url"],
         "session_lifetime_days": cfg["session_lifetime_days"],
         "external_url": cfg["external_url"],
-        "password_login": auth.password_enabled,
+        "password_login": cfg["password_login"],
+        "admin_username": cfg["admin_username"],
+        "password_set": bool(cfg["admin_password_hash"]),
+        "must_change_password": cfg["must_change_password"],
     }
 
 
@@ -112,11 +118,28 @@ async def save_auth_config(update: AuthConfigUpdate):
         cfg["client_secret"] = update.client_secret.strip()
     cfg["session_lifetime_days"] = max(1, min(365, update.session_lifetime_days or 7))
     cfg["external_url"] = update.external_url.strip().rstrip("/")
+    cfg["password_login"] = update.password_login
+    if update.admin_username.strip():
+        cfg["admin_username"] = update.admin_username.strip()
+    if update.new_password:
+        if len(update.new_password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        cfg["admin_password_hash"] = auth.hash_password(update.new_password)
+        cfg["must_change_password"] = False
 
     if cfg["enabled"] and not all([cfg["client_id"], cfg["client_secret"], cfg["discovery_url"]]):
         raise HTTPException(
             status_code=400,
             detail="Discovery URL, client ID and client secret are all required to enable OIDC",
+        )
+    if not cfg["enabled"] and not cfg["password_login"]:
+        raise HTTPException(status_code=400, detail="At least one login method must stay enabled")
+    if not cfg["password_login"] and not auth.oidc_enabled:
+        # Guard against saving into a lockout: OIDC must already be running
+        # (saved, restarted and active) before password login can be turned off
+        raise HTTPException(
+            status_code=400,
+            detail="Enable OIDC and restart the container before disabling password login",
         )
 
     auth.save_oauth_config(cfg)

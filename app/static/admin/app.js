@@ -1138,6 +1138,7 @@ function showToast(type, msg) {
 // Changes require a container restart to take effect.
 
 let authLoaded = false;
+let authPasswordSet = false;
 
 async function loadAuthSettings() {
   let data;
@@ -1155,15 +1156,22 @@ async function loadAuthSettings() {
   document.getElementById('auth_client_id').value = data.client_id || '';
   document.getElementById('auth_client_secret').value = '';
   document.getElementById('auth_session_days').value = data.session_lifetime_days || 7;
+  document.getElementById('auth_password_login').checked = data.password_login;
+  document.getElementById('auth_admin_username').value = data.admin_username || 'admin';
+  document.getElementById('auth_new_password').value = '';
   updateRedirectHint();
   document.getElementById('auth-secret-status').textContent = data.client_secret_set
     ? 'A client secret is saved. Leave blank to keep it.'
     : 'No client secret saved.';
+  document.getElementById('auth-password-status').textContent = data.must_change_password
+    ? 'You are using a generated password. Set a new one.'
+    : (data.password_set ? 'A password is set.' : 'No password set.');
 
   // Warn when the saved config differs from what is currently running
   document.getElementById('auth-restart-banner').hidden = data.enabled === data.enabled_runtime;
-  // Warn when disabling password login is impossible (no OIDC as fallback)
-  document.getElementById('auth-no-password-note').hidden = data.password_login;
+  // Prompt to replace the generated first-launch password
+  document.getElementById('banner-password').hidden = !data.must_change_password;
+  authPasswordSet = data.password_set;
 }
 
 function updateRedirectHint() {
@@ -1186,9 +1194,24 @@ async function saveAuthSettings() {
   const clientId = document.getElementById('auth_client_id').value.trim();
   const clientSecret = document.getElementById('auth_client_secret').value;
   const sessionDays = parseInt(document.getElementById('auth_session_days').value, 10) || 7;
+  const passwordLogin = document.getElementById('auth_password_login').checked;
+  const adminUsername = document.getElementById('auth_admin_username').value.trim();
+  const newPassword = document.getElementById('auth_new_password').value;
 
+  if (!enabled && !passwordLogin) {
+    showToast('At least one login method must stay enabled', 'error');
+    return;
+  }
   if (enabled && (!discoveryUrl || !clientId)) {
     showToast('Discovery URL and client ID are required to enable OIDC', 'error');
+    return;
+  }
+  if (passwordLogin && !authPasswordSet && !newPassword) {
+    showToast('Set a password to enable password login', 'error');
+    return;
+  }
+  if (newPassword && newPassword.length < 8) {
+    showToast('Password must be at least 8 characters', 'error');
     return;
   }
 
@@ -1200,30 +1223,36 @@ async function saveAuthSettings() {
       client_id: clientId,
       client_secret: clientSecret,
       session_lifetime_days: sessionDays,
+      password_login: passwordLogin,
+      admin_username: adminUsername,
+      new_password: newPassword,
     });
   } catch (err) {
     showToast(`Save failed: ${err.message}`, 'error');
     return;
   }
 
-  showToast('Saved. Restart the container to apply.');
-  document.getElementById('auth_client_secret').value = '';
+  showToast('Saved. OIDC and session changes apply after a restart.');
   if (document.getElementById('auth_client_secret').type === 'text') toggleAuthSecret();
-  if (clientSecret) {
-    document.getElementById('auth-secret-status').textContent = 'A client secret is saved. Leave blank to keep it.';
-  }
-  // All auth changes require a restart, so always show the banner after saving
+  await loadAuthSettings();
+  // All OIDC changes require a restart, so always show the banner after saving
   document.getElementById('auth-restart-banner').hidden = false;
 }
 
 document.getElementById('auth-save-btn')?.addEventListener('click', saveAuthSettings);
 document.getElementById('auth-secret-toggle')?.addEventListener('click', toggleAuthSecret);
 document.getElementById('auth_external_url')?.addEventListener('input', updateRedirectHint);
+document.getElementById('banner-password-link')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showSection('authentication');
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 reloadConfig().catch(err => console.error('init failed:', err));
 reloadCookies();
+// Loaded at startup (not lazily) so the generated password banner can show
+loadAuthSettings().catch(err => console.error('auth settings failed:', err));
 
 let _resizeRafPending = false;
 window.addEventListener('resize', () => {

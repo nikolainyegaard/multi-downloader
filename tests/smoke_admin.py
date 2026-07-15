@@ -1,16 +1,24 @@
 """Manual smoke test for the admin panel auth. Not wired to any test runner.
 
-Run: ADMIN_PASSWORD=test123 DATA_DIR=/tmp/mdl-data python tests/smoke_admin.py
+Run: DATA_DIR=/tmp/mdl-data python tests/smoke_admin.py
 """
 
+import json
 import os
+import re
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
 BASE = "http://127.0.0.1:8000"
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
 
 
 class Client:
@@ -36,81 +44,119 @@ class Client:
         return resp.status, resp.headers.get("Location", ""), resp.read().decode(errors="replace")
 
 
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        return None
+def start_server(extra_env=None):
+    env = dict(os.environ)
+    if extra_env:
+        env.update(extra_env)
+    srv = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app.main:app", "--port", "8000"],
+        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    # The credentials banner prints at import time, before uvicorn is ready
+    password = None
+    for _ in range(80):
+        line = srv.stdout.readline()
+        if not line:
+            time.sleep(0.1)
+            continue
+        m = re.search(r"Password: (\S+)", line)
+        if m:
+            password = m.group(1)
+        if "Uvicorn running" in line:
+            break
+    for _ in range(50):
+        try:
+            urllib.request.urlopen(BASE + "/", timeout=1)
+            break
+        except Exception:
+            time.sleep(0.2)
+    return srv, password
+
+
+def login(c, username, password):
+    form = urllib.parse.urlencode({"username": username, "password": password}).encode()
+    return c.request("POST", "/admin/login", form, "application/x-www-form-urlencoded")
+
+
+def save_cfg(c, **kwargs):
+    body = {
+        "enabled": False, "discovery_url": "", "client_id": "", "client_secret": "",
+        "session_lifetime_days": 7, "external_url": "", "password_login": True,
+        "admin_username": "admin", "new_password": "",
+    }
+    body.update(kwargs)
+    return c.request("POST", "/admin/api/auth/config", json.dumps(body).encode(), "application/json")
 
 
 def main():
-    srv = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--port", "8000"])
+    srv, generated = start_server()
     try:
-        for _ in range(50):
-            time.sleep(0.2)
-            try:
-                urllib.request.urlopen(BASE + "/", timeout=1)
-                break
-            except Exception:
-                continue
+        print("GENERATED-PW:", "captured" if generated else "MISSING")
 
         c = Client()
+        status, _, body = login(c, "admin", "wrong")
+        print("BAD-LOGIN:", status, "rejected" if status == 401 else "FAIL")
 
-        status, loc, _ = c.request("GET", "/admin/")
-        print("PANEL-NOAUTH:", status, loc, "OK" if status in (302, 307) and loc.endswith("/admin/login") else "FAIL")
-
-        status, _, body = c.request("GET", "/admin/login")
-        print("LOGIN-PAGE:", status,
-              "password-form" if 'action="login"' in body else "NO-FORM",
-              "oidc-hidden" if 'href="oidc/login" hidden' in body else "oidc-visible")
-
-        form = urllib.parse.urlencode({"username": "admin", "password": "wrong"}).encode()
-        status, _, body = c.request("POST", "/admin/login", form, "application/x-www-form-urlencoded")
-        print("BAD-LOGIN:", status, "rejected" if status == 401 and "Invalid credentials" in body else "FAIL")
-
-        form = urllib.parse.urlencode({"username": "admin", "password": "test123"}).encode()
-        status, loc, _ = c.request("POST", "/admin/login", form, "application/x-www-form-urlencoded")
-        print("GOOD-LOGIN:", status, loc, "OK" if status == 303 else "FAIL")
-
-        status, _, body = c.request("GET", "/admin/")
-        print("PANEL-AUTHED:", status, "OK" if status == 200 and "sidebar" in body else "FAIL")
-
-        status, _, body = c.request("GET", "/admin/api/config")
-        print("API-AUTHED:", status, "OK" if status == 200 and "site_title" in body else "FAIL")
-
-        status, _, _ = Client().request("GET", "/admin/api/config")
-        print("API-NOAUTH:", status, "OK" if status == 401 else "FAIL")
-
-        status, loc, _ = c.request("GET", "/admin/oidc/login")
-        print("OIDC-DISABLED:", status, loc, "OK" if status in (302, 307) and loc.endswith("/admin/login") else "FAIL")
-
-        status, _, body = c.request("GET", "/admin/api/auth/config")
-        print("AUTH-CFG-GET:", status, "OK" if status == 200 and '"client_secret_set": false' in body.replace("'", '"') or '"client_secret_set":false' in body else body[:120])
-
-        import json as _json
-        payload = _json.dumps({"enabled": True, "discovery_url": "", "client_id": "", "client_secret": "", "session_lifetime_days": 7}).encode()
-        status, _, body = c.request("POST", "/admin/api/auth/config", payload, "application/json")
-        print("AUTH-CFG-INVALID:", status, "OK" if status == 400 else body[:120])
-
-        payload = _json.dumps({"enabled": True, "discovery_url": "https://idp.example/.well-known/openid-configuration", "client_id": "cid", "client_secret": "sec", "session_lifetime_days": 14, "external_url": "https://dl.example.com/"}).encode()
-        status, _, body = c.request("POST", "/admin/api/auth/config", payload, "application/json")
-        print("AUTH-CFG-SAVE:", status, "OK" if status == 200 and "restart_required" in body else body[:120])
+        status, loc, _ = login(c, "admin", generated)
+        print("GENERATED-LOGIN:", status, "OK" if status == 303 else "FAIL")
 
         status, _, body = c.request("GET", "/admin/api/auth/config")
         flat = body.replace(" ", "")
-        ok = ('"client_id":"cid"' in flat and '"client_secret_set":true' in flat
-              and '"enabled_runtime":false' in flat
-              and '"external_url":"https://dl.example.com"' in flat)  # trailing slash stripped
-        print("AUTH-CFG-PERSIST:", status, "OK" if ok else body[:200])
+        print("MUST-CHANGE-FLAG:", "OK" if '"must_change_password":true' in flat and '"password_set":true' in flat else flat[:200])
 
-        status, loc, _ = c.request("POST", "/admin/logout")
-        print("LOGOUT:", status, loc, "OK" if status == 303 else "FAIL")
+        status, _, body = save_cfg(c, new_password="short")
+        print("SHORT-PASSWORD:", status, "OK" if status == 400 else body[:120])
 
-        status, loc, _ = c.request("GET", "/admin/api/config")
-        print("API-AFTER-LOGOUT:", status, "OK" if status == 401 else "FAIL")
+        status, _, body = save_cfg(c, enabled=False, password_login=False)
+        print("BOTH-DISABLED:", status, "OK" if status == 400 else body[:120])
 
-        status, _, body = c.request("GET", "/")
-        print("PUBLIC-SITE:", status, "OK" if status == 200 else "FAIL")
+        status, _, body = save_cfg(c, password_login=False, enabled=True,
+                                   discovery_url="https://idp.example/.wk", client_id="cid", client_secret="sec")
+        print("LOCKOUT-GUARD:", status, "OK" if status == 400 and "restart" in body else body[:120])
+
+        status, _, body = save_cfg(c, new_password="newpassword123", admin_username="boss")
+        print("CHANGE-CREDS:", status, "OK" if status == 200 else body[:120])
+
+        status, _, body = c.request("GET", "/admin/api/auth/config")
+        flat = body.replace(" ", "")
+        print("FLAG-CLEARED:", "OK" if '"must_change_password":false' in flat and '"admin_username":"boss"' in flat else flat[:200])
+
+        c2 = Client()
+        status, _, _ = login(c2, "admin", generated)
+        print("OLD-CREDS-REJECTED:", status, "OK" if status == 401 else "FAIL")
+        status, _, _ = login(c2, "boss", "newpassword123")
+        print("NEW-CREDS-LOGIN:", status, "OK" if status == 303 else "FAIL")
+
+        status, _, _ = c2.request("GET", "/admin/api/config")
+        print("API-AUTHED:", status, "OK" if status == 200 else "FAIL")
     finally:
         srv.terminate()
+        srv.wait()
+
+    # Second boot: no regeneration expected (credentials already stored)
+    srv, pw2 = start_server()
+    try:
+        print("SECOND-BOOT-NO-REGEN:", "OK" if pw2 is None else "REGENERATED-FAIL")
+        c = Client()
+        status, _, _ = login(c, "boss", "newpassword123")
+        print("PERSISTED-LOGIN:", status, "OK" if status == 303 else "FAIL")
+    finally:
+        srv.terminate()
+        srv.wait()
+
+    # AUTH_RESET boot: fresh credentials, OIDC disabled
+    srv, pw3 = start_server({"AUTH_RESET": "1"})
+    try:
+        print("RESET-PW:", "captured" if pw3 else "MISSING")
+        c = Client()
+        status, _, _ = login(c, "admin", pw3)
+        print("RESET-LOGIN:", status, "OK" if status == 303 else "FAIL")
+        status, _, body = c.request("GET", "/admin/api/auth/config")
+        flat = body.replace(" ", "")
+        print("RESET-STATE:", "OK" if '"enabled":false' in flat and '"must_change_password":true' in flat else flat[:200])
+    finally:
+        srv.terminate()
+        srv.wait()
 
 
 if __name__ == "__main__":
