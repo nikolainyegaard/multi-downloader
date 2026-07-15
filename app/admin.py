@@ -10,11 +10,13 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import aiosqlite
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 
+from app import auth
 from app.config import CONFIG_DIR, DATA_DIR, LEGAL_DIR, LOGS_DIR, STATIC_ASSETS_DIR, Config, load_config, migrate_assets_to_static, save_config
 from app.db import DB_PATH, init_db
 
@@ -34,6 +36,42 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth.router)
+
+# Paths inside the /admin mount that never require a session
+_PUBLIC_PATHS = {"/login", "/oidc/login", "/oidc/callback", "/favicon.ico"}
+
+
+@app.middleware("http")
+async def require_admin(request: Request, call_next):
+    # Path relative to the /admin mount; newer Starlette keeps the full path
+    # in scope["path"] and only sets root_path
+    root = request.scope.get("root_path", "")
+    path = request.scope["path"]
+    if root and path.startswith(root):
+        path = path[len(root):] or "/"
+    if path in _PUBLIC_PATHS or path.startswith("/static/"):
+        return await call_next(request)
+    if not auth.admin_enabled:
+        return JSONResponse(
+            {"detail": "Admin panel disabled. Set ADMIN_PASSWORD or the OIDC env vars."},
+            status_code=404,
+        )
+    if not request.session.get("admin"):
+        if path.startswith("/api/"):
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        return RedirectResponse(request.scope.get("root_path", "") + "/login")
+    return await call_next(request)
+
+
+# Added after require_admin so it wraps it and sessions are available inside
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=auth.secret_key(),
+    session_cookie="mdl_admin",
+    max_age=7 * 24 * 3600,
+    same_site="lax",
+)
 
 STATIC_DIR = Path(__file__).parent / "static" / "admin"
 APP_VERSION = os.getenv("APP_VERSION", "dev")

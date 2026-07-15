@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>__BROWSER_TITLE__</title>
   __FAVICON_LINK__
-  <link rel="stylesheet" href="/static/style.css?v=__VERSION__" />
+  <link rel="stylesheet" href="static/style.css?v=__VERSION__" />
   __ACCENT_STYLE__
   <script>(function(){var t=localStorage.getItem('theme')||'system';document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
@@ -46,6 +46,12 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             Danger zone
           </button>
+          <form method="post" action="logout" style="margin: 0; display: contents">
+            <button class="nav-item" type="submit">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Log out
+            </button>
+          </form>
         </div>
       </nav>
     </aside>
@@ -58,7 +64,7 @@
         <div id="banner-disclaimer" class="banner banner--warning" hidden>
           <div class="banner-body">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span>No legal disclaimer configured. <a href="/disclaimer-guide" target="_blank" rel="noopener">Setup guide</a></span>
+            <span>No legal disclaimer configured. <a href="disclaimer-guide" target="_blank" rel="noopener">Setup guide</a></span>
           </div>
           <button id="dismiss-disclaimer" class="banner-dismiss">Don't show again</button>
         </div>
@@ -299,6 +305,6 @@
 
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=__VERSION__"></script>
+  <script src="static/app.js?v=__VERSION__"></script>
 </body>
 </html>

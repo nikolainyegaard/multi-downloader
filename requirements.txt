@@ -9,3 +9,6 @@ python-multipart
 aiosqlite
 ua-parser
 geoip2
+authlib
+httpx
+itsdangerous

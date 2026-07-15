@@ -137,18 +137,27 @@ function showConfirm(message) {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+// Session expired: bounce to the login page instead of surfacing raw errors
+function apiCheck(r) {
+  if (r.status === 401) {
+    location.href = 'login';
+    throw new Error('Unauthorized');
+  }
+  return r;
+}
+
 async function apiGet(path) {
-  const r = await fetch(path);
+  const r = apiCheck(await fetch(path));
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
 }
 
 async function apiPost(path, body) {
-  const r = await fetch(path, {
+  const r = apiCheck(await fetch(path, {
     method: 'POST',
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  }));
   if (!r.ok) {
     const data = await r.json().catch(() => ({}));
     throw new Error(data.detail || `${r.status} ${r.statusText}`);
@@ -157,7 +166,7 @@ async function apiPost(path, body) {
 }
 
 async function apiDelete(path) {
-  const r = await fetch(path, { method: 'DELETE' });
+  const r = apiCheck(await fetch(path, { method: 'DELETE' }));
   if (!r.ok) {
     const data = await r.json().catch(() => ({}));
     throw new Error(data.detail || `${r.status} ${r.statusText}`);
@@ -168,7 +177,7 @@ async function apiDelete(path) {
 async function apiUpload(path, file) {
   const form = new FormData();
   form.append('file', file);
-  const r = await fetch(path, { method: 'POST', body: form });
+  const r = apiCheck(await fetch(path, { method: 'POST', body: form }));
   if (!r.ok) {
     const data = await r.json().catch(() => ({}));
     throw new Error(data.detail || `${r.status} ${r.statusText}`);
@@ -185,7 +194,7 @@ function configPayload(overrides) {
 // ── Config loading ────────────────────────────────────────────────────────────
 
 async function reloadConfig() {
-  cfg = await apiGet('/api/config');
+  cfg = await apiGet('api/config');
   populateForms();
   renderDisclaimerBanner();
   renderLogoState();
@@ -341,7 +350,7 @@ function renderDisclaimerBanner() {
 
 document.getElementById('dismiss-disclaimer')?.addEventListener('click', async () => {
   try {
-    await apiPost('/api/dismiss-disclaimer-warning');
+    await apiPost('api/dismiss-disclaimer-warning');
     await reloadConfig();
   } catch (err) {
     console.error('dismiss-disclaimer failed:', err);
@@ -408,7 +417,7 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
     if (currentSection === 'branding') {
       // lowercase so the saved value always matches getFormValue's dirty check
       const accent = document.getElementById('accent_color').value.toLowerCase();
-      await apiPost('/api/config', configPayload({
+      await apiPost('api/config', configPayload({
         site_title:    document.getElementById('site_title').value.trim(),
         browser_title: document.getElementById('browser_title').value.trim(),
         subtitle:      document.getElementById('subtitle').value.trim(),
@@ -419,7 +428,7 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
       await reloadConfig();
       showToast('success', 'Branding saved');
     } else if (currentSection === 'content') {
-      await apiPost('/api/config', configPayload({
+      await apiPost('api/config', configPayload({
         show_paste_button: document.getElementById('show_paste_button').checked,
         kofi_enabled:      document.getElementById('kofi_enabled').checked,
         kofi_username:     document.getElementById('kofi_username').value.trim(),
@@ -446,7 +455,7 @@ function renderLogoState() {
   if (logoPending) {
     el.innerHTML = `
       <div class="asset-preview">
-        <img src="/api/logo/pending?t=${Date.now()}" alt="Logo preview" class="asset-img" />
+        <img src="api/logo/pending?t=${Date.now()}" alt="Logo preview" class="asset-img" />
         <span class="asset-badge asset-badge--pending">Not yet live</span>
       </div>
       <div class="asset-actions">
@@ -461,7 +470,7 @@ function renderLogoState() {
   if (cfg.has_logo) {
     el.innerHTML = `
       <div class="asset-preview">
-        <img src="/api/logo?t=${Date.now()}" alt="Logo" class="asset-img" />
+        <img src="api/logo?t=${Date.now()}" alt="Logo" class="asset-img" />
       </div>
       <div class="asset-actions">
         <label for="logo-replace-input" class="btn btn--secondary">Replace</label>
@@ -488,7 +497,7 @@ async function handleLogoUpload(e) {
   const el = document.getElementById('logo-state');
   el.innerHTML = '<p class="asset-empty">Uploading...</p>';
   try {
-    await apiUpload('/api/logo/upload', file);
+    await apiUpload('api/logo/upload', file);
     logoPending = true;
     renderLogoState();
   } catch (err) {
@@ -499,7 +508,7 @@ async function handleLogoUpload(e) {
 
 async function confirmLogo() {
   try {
-    await apiPost('/api/logo/confirm');
+    await apiPost('api/logo/confirm');
     logoPending = false;
     await reloadConfig();
     showToast('success', 'Logo saved');
@@ -510,7 +519,7 @@ async function confirmLogo() {
 
 async function discardLogo() {
   try {
-    await apiPost('/api/logo/discard');
+    await apiPost('api/logo/discard');
   } catch { /* ignore */ }
   logoPending = false;
   renderLogoState();
@@ -519,7 +528,7 @@ async function discardLogo() {
 async function deleteLogo() {
   if (!await showConfirm('Delete the logo? This cannot be undone.')) return;
   try {
-    await apiDelete('/api/logo');
+    await apiDelete('api/logo');
     await reloadConfig();
     showToast('success', 'Logo deleted');
   } catch (err) {
@@ -538,7 +547,7 @@ function renderFaviconState() {
   if (faviconPending) {
     el.innerHTML = `
       <div class="asset-preview">
-        <img src="/api/favicon/pending?t=${Date.now()}" alt="Favicon preview" class="asset-favicon-img" />
+        <img src="api/favicon/pending?t=${Date.now()}" alt="Favicon preview" class="asset-favicon-img" />
         <span class="asset-badge asset-badge--pending">Not yet live</span>
       </div>
       <div class="asset-actions">
@@ -553,7 +562,7 @@ function renderFaviconState() {
   if (cfg.has_favicon) {
     el.innerHTML = `
       <div class="asset-preview">
-        <img src="/favicon.ico?t=${Date.now()}" alt="Favicon" class="asset-favicon-img" />
+        <img src="favicon.ico?t=${Date.now()}" alt="Favicon" class="asset-favicon-img" />
         <span class="asset-badge asset-badge--enabled">Active</span>
       </div>
       <div class="asset-actions">
@@ -581,7 +590,7 @@ async function handleFaviconUpload(e) {
   const el = document.getElementById('favicon-state');
   el.innerHTML = '<p class="asset-empty">Uploading...</p>';
   try {
-    await apiUpload('/api/favicon/upload', file);
+    await apiUpload('api/favicon/upload', file);
     faviconPending = true;
     renderFaviconState();
   } catch (err) {
@@ -592,7 +601,7 @@ async function handleFaviconUpload(e) {
 
 async function confirmFavicon() {
   try {
-    await apiPost('/api/favicon/confirm');
+    await apiPost('api/favicon/confirm');
     faviconPending = false;
     await reloadConfig();
     showToast('success', 'Favicon saved');
@@ -603,7 +612,7 @@ async function confirmFavicon() {
 
 async function discardFavicon() {
   try {
-    await apiPost('/api/favicon/discard');
+    await apiPost('api/favicon/discard');
   } catch { /* ignore */ }
   faviconPending = false;
   renderFaviconState();
@@ -612,7 +621,7 @@ async function discardFavicon() {
 async function deleteFavicon() {
   if (!await showConfirm('Delete the favicon? This cannot be undone.')) return;
   try {
-    await apiDelete('/api/favicon');
+    await apiDelete('api/favicon');
     await reloadConfig();
     showToast('success', 'Favicon deleted');
   } catch (err) {
@@ -626,7 +635,7 @@ let cookiesInfo = { present: false };
 
 async function reloadCookies() {
   try {
-    cookiesInfo = await apiGet('/api/cookies');
+    cookiesInfo = await apiGet('api/cookies');
   } catch {
     cookiesInfo = { present: false };
   }
@@ -671,7 +680,7 @@ async function handleCookiesUpload(e) {
   const el = document.getElementById('cookies-state');
   el.innerHTML = '<p class="asset-empty">Uploading...</p>';
   try {
-    cookiesInfo = await apiUpload('/api/cookies/upload', file);
+    cookiesInfo = await apiUpload('api/cookies/upload', file);
     renderCookiesState();
     showToast('success', 'Cookies uploaded');
   } catch (err) {
@@ -683,7 +692,7 @@ async function handleCookiesUpload(e) {
 async function deleteCookies() {
   if (!await showConfirm('Delete the cookies file? Sites that need a login will stop working until a new one is uploaded.')) return;
   try {
-    await apiDelete('/api/cookies');
+    await apiDelete('api/cookies');
     await reloadCookies();
     showToast('success', 'Cookies deleted');
   } catch (err) {
@@ -717,7 +726,7 @@ async function loadStats() {
 
   let data;
   try {
-    data = await apiGet('/api/stats');
+    data = await apiGet('api/stats');
   } catch (err) {
     el.innerHTML = `<div class="stats-unavailable"><h3>Failed to load statistics</h3><p>${err.message}</p></div>`;
     return;
@@ -1098,7 +1107,7 @@ document.getElementById('reset-btn')?.addEventListener('click', async () => {
   const btn = document.getElementById('reset-btn');
   btn.disabled = true;
   try {
-    await apiPost('/api/config/reset');
+    await apiPost('api/config/reset');
     await reloadConfig();
     showToast('success', 'Settings reset to defaults');
   } catch (err) {

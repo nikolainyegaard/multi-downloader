@@ -12,25 +12,15 @@ services:
     restart: unless-stopped
     environment:
       TZ: "Europe/Oslo"
+      # Admin panel at /admin. Enabled when a password or OIDC is configured.
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "changeme"
+      # Optional OIDC login (Authentik, Keycloak, Pocket ID, ...):
+      # OIDC_DISCOVERY_URL: "https://auth.example.com/application/o/multi-downloader/.well-known/openid-configuration"
+      # OIDC_CLIENT_ID: ""
+      # OIDC_CLIENT_SECRET: ""
     volumes:
       - ./data:/app/data
-    expose:
-      - "8000"
-    networks:
-      - caddy_net
-      - downloader_net
-    depends_on:
-      - bgutil-provider
-
-  multi-downloader-admin:
-    image: ghcr.io/nikolainyegaard/multi-downloader:latest
-    container_name: multi-downloader-admin
-    restart: unless-stopped
-    environment:
-      TZ: "Europe/Oslo"
-      ADMIN_MODE: "1"
-    volumes:
-      - ./data:/app/data:rw
     expose:
       - "8000"
     networks:

@@ -16,7 +16,7 @@ Paste a link, tap Download, get the file. Powered by [yt-dlp](https://github.com
 - Video preview with thumbnail, title, duration, and uploader before downloading
 - Quality selector: choose resolution (1080p, 720p, 480p, etc.) or let it default to best available
 - YouTube bot detection bypassed via `bgutil-ytdlp-pot-provider` sidecar (no account needed)
-- Admin panel: branding, logo/favicon upload, request statistics, and logs
+- Admin panel at `/admin` with username/password and optional OIDC login: branding, logo/favicon upload, request statistics, and logs
 - Optional legal disclaimer page at `/legal-disclaimer` served from a Markdown file
 - Light/dark/system theme toggle; persists across the public and admin pages
 - Docker image for amd64 and arm64
@@ -29,8 +29,6 @@ Paste a link, tap Download, get the file. Powered by [yt-dlp](https://github.com
 
 Create a folder on your server and drop in a `docker-compose.yml`.
 
-**Without admin panel** (single container, simplest):
-
 ```yaml
 services:
   bgutil-provider:
@@ -43,52 +41,14 @@ services:
   multi-downloader:
     image: ghcr.io/nikolainyegaard/multi-downloader:latest
     container_name: multi-downloader
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8000:8000"
-    networks:
-      - downloader_net
-    depends_on:
-      - bgutil-provider
-
-networks:
-  downloader_net:
-```
-
-**With admin panel** (two containers, different host ports):
-
-```yaml
-services:
-  bgutil-provider:
-    image: brainicism/bgutil-ytdlp-pot-provider:latest
-    container_name: bgutil-provider
-    restart: unless-stopped
-    networks:
-      - downloader_net
-
-  multi-downloader:
-    image: ghcr.io/nikolainyegaard/multi-downloader:latest
-    container_name: multi-downloader
-    restart: unless-stopped
-    volumes:
-      - ./data:/app/data:ro
-    ports:
-      - "127.0.0.1:8000:8000"
-    networks:
-      - downloader_net
-    depends_on:
-      - bgutil-provider
-
-  multi-downloader-admin:
-    image: ghcr.io/nikolainyegaard/multi-downloader:latest
-    container_name: multi-downloader-admin
     restart: unless-stopped
     environment:
-      ADMIN_MODE: "1"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "changeme"
     volumes:
-      - ./data:/app/data:rw
+      - ./data:/app/data
     ports:
-      - "127.0.0.1:8001:8000"
+      - "127.0.0.1:8000:8000"
     networks:
       - downloader_net
     depends_on:
@@ -98,7 +58,7 @@ networks:
   downloader_net:
 ```
 
-Public site at `http://localhost:8000`, admin at `http://localhost:8001`.
+Public site at `http://localhost:8000`, admin at `http://localhost:8000/admin`. Leave out `ADMIN_PASSWORD` (and the OIDC variables) to disable the admin panel entirely.
 
 ### 2. Start the containers
 
@@ -121,9 +81,16 @@ The app will be available at `http://localhost:8000` (or via your reverse proxy)
 
 ## Admin panel
 
-The admin panel runs as a second container from the same image. It exposes a settings UI for branding, content, statistics, and logs; changes take effect immediately without restarting the main container.
+The admin panel lives at `/admin` in the same container and exposes a settings UI for branding, content, statistics, and logs; changes take effect immediately.
 
-The admin container has no built-in authentication. Secure it at the network or reverse proxy level before exposing it.
+### Signing in
+
+Two login methods, either or both:
+
+- **Username/password**: set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment
+- **OpenID Connect**: set `OIDC_DISCOVERY_URL`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET`; a "OpenID Connect" button appears on the login page. Works with any OIDC provider (Authentik, Keycloak, Pocket ID, ...). Register the redirect URL `https://your-domain/admin/oidc/callback` with the provider.
+
+The admin panel is disabled (404) unless at least one method is configured. Sessions last 7 days.
 
 ### Settings
 
@@ -187,7 +154,12 @@ Environment variables in `docker-compose.yml`:
 |---|---|---|
 | `TZ` | `UTC` | Container timezone for log timestamps, e.g. `Europe/Oslo`. |
 | `WEB_PORT` | `8000` | Port the app listens on inside the container. |
-| `ADMIN_MODE` | unset | Set to `1` to run the container as the admin panel instead of the public site. |
+| `ADMIN_USERNAME` | `admin` | Username for admin password login. |
+| `ADMIN_PASSWORD` | unset | Password for admin login; enables the admin panel when set. |
+| `OIDC_DISCOVERY_URL` | unset | OIDC `.well-known/openid-configuration` URL; enables the OpenID Connect login button together with the two variables below. |
+| `OIDC_CLIENT_ID` | unset | OIDC client ID. |
+| `OIDC_CLIENT_SECRET` | unset | OIDC client secret. |
+| `SECRET_KEY` | auto | Session signing key; generated once into `data/.secret_key` if unset. |
 | `DATA_DIR` | `/app/data` | Path to the data volume mount point inside the container. |
 
 ---
@@ -198,15 +170,10 @@ Requires Python 3.10+ and [ffmpeg](https://ffmpeg.org/).
 
 ```bash
 pip install -r requirements.txt
-
-# Public site
-uvicorn app.main:app --reload
-
-# Admin panel
-ADMIN_MODE=1 uvicorn app.main:app --reload --port 8001
+ADMIN_PASSWORD=changeme uvicorn app.main:app --reload
 ```
 
-Open `http://localhost:8000` (public) or `http://localhost:8001` (admin).
+Open `http://localhost:8000` (public) or `http://localhost:8000/admin` (admin).
 
 ---
 

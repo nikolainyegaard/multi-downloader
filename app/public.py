@@ -343,3 +343,10 @@ app.mount("/assets", StaticFiles(directory=STATIC_ASSETS_DIR), name="user_assets
 
 # Bundled app static files -- mounted last so API routes take priority
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# Admin panel: served from the same process at /admin, gated by session auth
+# (username/password and/or OIDC, see app/auth.py). Replaces the former
+# ADMIN_MODE second container behind Authentik forward_auth.
+from app.admin import app as admin_app  # noqa: E402
+
+app.mount("/admin", admin_app)

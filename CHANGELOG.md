@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Cookies management in the admin panel Content tab: upload, replace, or delete a Netscape-format cookies.txt passed to yt-dlp on every download; enables sites that need a login, such as NSFW posts on X. Uploads are validated and take effect immediately
+- Built-in admin login: username/password via ADMIN_USERNAME and ADMIN_PASSWORD, plus optional OpenID Connect via OIDC_DISCOVERY_URL, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET
+- Log out button in the admin sidebar
+
+### Changed
+- Admin panel moved from a separate ADMIN_MODE container on its own subdomain (behind Authentik) to /admin inside the main app; one container, one domain, sessions last 7 days
+
+### Removed
+- ADMIN_MODE env var and the second compose service; the Authentik forward_auth requirement is gone
 
 ### Security
 - Visitor-submitted URLs and forwarded IPs are now escaped before rendering in the admin logs table and statistics legend, closing a stored XSS in the admin panel
