@@ -1029,7 +1029,7 @@ async function loadLogs(page) {
   const rows = data.items.map(row => `
     <tr>
       <td title="${row.ts}">${formatTs(row.ts)}</td>
-      <td>${row.ip ? esc(row.ip) : '-'}</td>
+      <td title="${row.ip ? esc(row.ip) : ''}">${row.ip ? esc(row.ip) : '-'}</td>
       <td>${row.country ?? '-'}</td>
       <td>${row.endpoint ?? '-'}</td>
       <td>${row.platform ? esc(row.platform) : '-'}</td>

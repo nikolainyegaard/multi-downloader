@@ -1181,10 +1181,19 @@ canvas.chart {
 
 table.log-table {
   width: 100%;
-  min-width: 820px;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.8rem;
 }
+
+/* Fixed column widths; URL takes whatever remains, long values ellipsize */
+.log-table th:nth-child(1) { width: 100px; }  /* Time */
+.log-table th:nth-child(2) { width: 96px; }   /* IP */
+.log-table th:nth-child(3) { width: 68px; }   /* Country */
+.log-table th:nth-child(4) { width: 80px; }   /* Endpoint */
+.log-table th:nth-child(5) { width: 104px; }  /* Platform */
+.log-table th:nth-child(7) { width: 60px; }   /* Status */
+.log-table th:nth-child(8) { width: 76px; }   /* Duration */
 
 .log-table th {
   padding: 10px 14px;
@@ -1204,7 +1213,6 @@ table.log-table {
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   white-space: nowrap;
-  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
