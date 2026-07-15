@@ -90,12 +90,15 @@ def main():
         status, _, body = c.request("POST", "/admin/api/auth/config", payload, "application/json")
         print("AUTH-CFG-INVALID:", status, "OK" if status == 400 else body[:120])
 
-        payload = _json.dumps({"enabled": True, "discovery_url": "https://idp.example/.well-known/openid-configuration", "client_id": "cid", "client_secret": "sec", "session_lifetime_days": 14}).encode()
+        payload = _json.dumps({"enabled": True, "discovery_url": "https://idp.example/.well-known/openid-configuration", "client_id": "cid", "client_secret": "sec", "session_lifetime_days": 14, "external_url": "https://dl.example.com/"}).encode()
         status, _, body = c.request("POST", "/admin/api/auth/config", payload, "application/json")
         print("AUTH-CFG-SAVE:", status, "OK" if status == 200 and "restart_required" in body else body[:120])
 
         status, _, body = c.request("GET", "/admin/api/auth/config")
-        ok = '"client_id":"cid"' in body.replace(" ", "") and '"client_secret_set":true' in body.replace(" ", "") and '"enabled_runtime":false' in body.replace(" ", "")
+        flat = body.replace(" ", "")
+        ok = ('"client_id":"cid"' in flat and '"client_secret_set":true' in flat
+              and '"enabled_runtime":false' in flat
+              and '"external_url":"https://dl.example.com"' in flat)  # trailing slash stripped
         print("AUTH-CFG-PERSIST:", status, "OK" if ok else body[:200])
 
         status, loc, _ = c.request("POST", "/admin/logout")

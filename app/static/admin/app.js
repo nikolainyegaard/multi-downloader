@@ -1150,10 +1150,12 @@ async function loadAuthSettings() {
   authLoaded = true;
 
   document.getElementById('auth_enabled').checked = data.enabled;
+  document.getElementById('auth_external_url').value = data.external_url || '';
   document.getElementById('auth_discovery_url').value = data.discovery_url || '';
   document.getElementById('auth_client_id').value = data.client_id || '';
   document.getElementById('auth_client_secret').value = '';
   document.getElementById('auth_session_days').value = data.session_lifetime_days || 7;
+  updateRedirectHint();
   document.getElementById('auth-secret-status').textContent = data.client_secret_set
     ? 'A client secret is saved. Leave blank to keep it.'
     : 'No client secret saved.';
@@ -1162,6 +1164,11 @@ async function loadAuthSettings() {
   document.getElementById('auth-restart-banner').hidden = data.enabled === data.enabled_runtime;
   // Warn when disabling password login is impossible (no OIDC as fallback)
   document.getElementById('auth-no-password-note').hidden = data.password_login;
+}
+
+function updateRedirectHint() {
+  const v = document.getElementById('auth_external_url').value.trim().replace(/\/+$/, '');
+  document.getElementById('auth-redirect-hint').textContent = `${v || 'https://your-domain'}/admin/oidc/callback`;
 }
 
 function toggleAuthSecret() {
@@ -1174,6 +1181,7 @@ function toggleAuthSecret() {
 
 async function saveAuthSettings() {
   const enabled = document.getElementById('auth_enabled').checked;
+  const externalUrl = document.getElementById('auth_external_url').value.trim().replace(/\/+$/, '');
   const discoveryUrl = document.getElementById('auth_discovery_url').value.trim();
   const clientId = document.getElementById('auth_client_id').value.trim();
   const clientSecret = document.getElementById('auth_client_secret').value;
@@ -1187,6 +1195,7 @@ async function saveAuthSettings() {
   try {
     await apiPost('api/auth/config', {
       enabled,
+      external_url: externalUrl,
       discovery_url: discoveryUrl,
       client_id: clientId,
       client_secret: clientSecret,
@@ -1209,6 +1218,7 @@ async function saveAuthSettings() {
 
 document.getElementById('auth-save-btn')?.addEventListener('click', saveAuthSettings);
 document.getElementById('auth-secret-toggle')?.addEventListener('click', toggleAuthSecret);
+document.getElementById('auth_external_url')?.addEventListener('input', updateRedirectHint);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

@@ -40,6 +40,9 @@ OAUTH_DEFAULTS = {
     "client_secret": "",
     "discovery_url": "",
     "session_lifetime_days": 7,
+    # Public base URL of this service (e.g. https://dl.example.com); used for
+    # the OIDC redirect URL and available for future external links
+    "external_url": "",
 }
 
 
@@ -118,8 +121,12 @@ def _root(request: Request) -> str:
 
 
 def _callback_uri(request: Request) -> str:
-    # Absolute URL; scheme and host come from proxy headers via
-    # ProxyHeadersMiddleware, and base_url already includes the mount prefix
+    # Prefer the configured external URL; fall back to the request, where
+    # scheme and host come from proxy headers via ProxyHeadersMiddleware
+    # (base_url already includes the /admin mount prefix)
+    ext = get_oauth_config()["external_url"].rstrip("/")
+    if ext:
+        return ext + "/admin/oidc/callback"
     return str(request.base_url).rstrip("/") + "/oidc/callback"
 
 

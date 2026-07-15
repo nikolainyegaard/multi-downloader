@@ -278,12 +278,25 @@
             </div>
           </div>
 
+          <h2 class="settings-group">Service</h2>
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span class="settings-row-name">External URL</span>
+                <span class="settings-row-desc">Public base URL of this service. Used for the OIDC redirect URL below and for future external links.</span>
+              </div>
+              <div class="settings-row-control">
+                <input type="text" id="auth_external_url" autocomplete="off" spellcheck="false" placeholder="https://dl.example.com" />
+              </div>
+            </div>
+          </div>
+
           <h2 class="settings-group">OpenID Connect</h2>
           <div class="settings-list">
             <div class="settings-row">
               <div class="settings-row-label">
                 <span class="settings-row-name">Enable OIDC login</span>
-                <span class="settings-row-desc">Shows an OpenID Connect button on the login page. Register the redirect URL <code>https://your-domain/admin/oidc/callback</code> with the provider.</span>
+                <span class="settings-row-desc">Shows an OpenID Connect button on the login page. Register the redirect URL <code id="auth-redirect-hint">https://your-domain/admin/oidc/callback</code> with the provider.</span>
               </div>
               <div class="settings-row-control settings-row-control--end">
                 <label class="toggle-switch">

@@ -84,6 +84,7 @@ class AuthConfigUpdate(BaseModel):
     client_id: str = ""
     client_secret: str = ""  # blank keeps the stored secret
     session_lifetime_days: int = 7
+    external_url: str = ""
 
 
 @app.get("/api/auth/config")
@@ -96,6 +97,7 @@ async def get_auth_config():
         "client_secret_set": bool(cfg["client_secret"]),
         "discovery_url": cfg["discovery_url"],
         "session_lifetime_days": cfg["session_lifetime_days"],
+        "external_url": cfg["external_url"],
         "password_login": auth.password_enabled,
     }
 
@@ -109,6 +111,7 @@ async def save_auth_config(update: AuthConfigUpdate):
     if update.client_secret:
         cfg["client_secret"] = update.client_secret.strip()
     cfg["session_lifetime_days"] = max(1, min(365, update.session_lifetime_days or 7))
+    cfg["external_url"] = update.external_url.strip().rstrip("/")
 
     if cfg["enabled"] and not all([cfg["client_id"], cfg["client_secret"], cfg["discovery_url"]]):
         raise HTTPException(
