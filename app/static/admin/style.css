@@ -837,6 +837,11 @@ input[type="color"] {
   color: var(--success);
 }
 
+.asset-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .asset-empty {
   font-size: 0.8rem;
   color: var(--text-faint);

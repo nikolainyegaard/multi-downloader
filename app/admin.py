@@ -2,6 +2,7 @@ import io
 import logging
 import math
 import os
+import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import datetime
@@ -14,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import CONFIG_DIR, LEGAL_DIR, LOGS_DIR, STATIC_ASSETS_DIR, Config, load_config, migrate_assets_to_static, save_config
+from app.config import CONFIG_DIR, DATA_DIR, LEGAL_DIR, LOGS_DIR, STATIC_ASSETS_DIR, Config, load_config, migrate_assets_to_static, save_config
 from app.db import DB_PATH, init_db
 
 try:
@@ -429,6 +430,66 @@ async def delete_favicon():
         if p.exists():
             p.unlink()
     _dlog("favicon deleted")
+    return {"ok": True}
+
+
+# ── Cookies API ────────────────────────────────────────────────────────────────
+# The public app passes data/cookies.txt to yt-dlp on every call, so uploads
+# apply immediately. Upload time lives in a companion file because st_mtime is
+# unreliable on Docker volume mounts.
+# ponytail: one shared cookies.txt for all sites (yt-dlp filters by domain);
+# split into per-service files if cross-site cookie separation ever matters.
+
+COOKIES_FILE  = DATA_DIR / "cookies.txt"
+COOKIES_STAMP = DATA_DIR / "cookies.timestamp"
+
+
+def _cookies_info() -> dict:
+    if not COOKIES_FILE.exists():
+        return {"present": False}
+    try:
+        updated_at = int(COOKIES_STAMP.read_text().strip())
+    except (FileNotFoundError, ValueError):
+        updated_at = None
+    return {
+        "present": True,
+        "size_bytes": COOKIES_FILE.stat().st_size,
+        "updated_at": updated_at,
+    }
+
+
+@app.get("/api/cookies")
+async def get_cookies():
+    return _cookies_info()
+
+
+@app.post("/api/cookies/upload")
+async def upload_cookies(file: UploadFile = File(...)):
+    data = await file.read()
+    text = data.decode("utf-8", errors="ignore")
+    # Sanity check: at least one Netscape cookie line (7 tab-separated fields,
+    # allowing the #HttpOnly_ prefix). Catches HTML exports and JSON dumps.
+    lines = (l.removeprefix("#HttpOnly_") for l in text.splitlines())
+    if not any(len(l.split("\t")) == 7 for l in lines if l.strip() and not l.startswith("#")):
+        raise HTTPException(
+            status_code=400,
+            detail="Not a Netscape-format cookies.txt. Export one with a browser extension like Get cookies.txt LOCALLY.",
+        )
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = DATA_DIR / "cookies.txt.tmp"
+    tmp.write_bytes(data)
+    os.replace(tmp, COOKIES_FILE)
+    COOKIES_STAMP.write_text(str(int(time.time())))
+    _dlog("cookies upload: %d bytes", len(data))
+    return {"ok": True, **_cookies_info()}
+
+
+@app.delete("/api/cookies")
+async def delete_cookies():
+    for p in (COOKIES_FILE, COOKIES_STAMP):
+        if p.exists():
+            p.unlink()
+    _dlog("cookies deleted")
     return {"ok": True}
 
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cookies management in the admin panel Content tab: upload, replace, or delete a Netscape-format cookies.txt passed to yt-dlp on every download; enables sites that need a login, such as NSFW posts on X. Uploads are validated and take effect immediately
+
 ### Security
 - Visitor-submitted URLs and forwarded IPs are now escaped before rendering in the admin logs table and statistics legend, closing a stored XSS in the admin panel
 

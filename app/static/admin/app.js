@@ -620,6 +620,77 @@ async function deleteFavicon() {
   }
 }
 
+// ── Cookies state ─────────────────────────────────────────────────────────────
+
+let cookiesInfo = { present: false };
+
+async function reloadCookies() {
+  try {
+    cookiesInfo = await apiGet('/api/cookies');
+  } catch {
+    cookiesInfo = { present: false };
+  }
+  renderCookiesState();
+}
+
+function renderCookiesState() {
+  const el = document.getElementById('cookies-state');
+  if (!el) return;
+
+  if (cookiesInfo.present) {
+    const parts = [];
+    if (cookiesInfo.updated_at) parts.push(`uploaded ${new Date(cookiesInfo.updated_at * 1000).toLocaleDateString()}`);
+    if (cookiesInfo.size_bytes != null) parts.push(`${(cookiesInfo.size_bytes / 1024).toFixed(1)} kB`);
+    el.innerHTML = `
+      <div class="asset-preview">
+        <span class="asset-badge asset-badge--enabled">Active</span>
+        <span class="asset-meta">${parts.join(' · ')}</span>
+      </div>
+      <div class="asset-actions">
+        <label for="cookies-replace-input" class="btn btn--secondary">Replace</label>
+        <button class="btn btn--danger" id="cookies-delete">Delete</button>
+      </div>
+      <input type="file" id="cookies-replace-input" class="hidden-file" accept=".txt,text/plain" />`;
+    document.getElementById('cookies-delete').onclick = deleteCookies;
+    document.getElementById('cookies-replace-input').onchange = handleCookiesUpload;
+    return;
+  }
+
+  el.innerHTML = `
+    <p class="asset-empty">No cookies file</p>
+    <div class="asset-actions">
+      <label for="cookies-upload-input" class="btn btn--secondary">Upload cookies.txt</label>
+    </div>
+    <input type="file" id="cookies-upload-input" class="hidden-file" accept=".txt,text/plain" />`;
+  document.getElementById('cookies-upload-input').onchange = handleCookiesUpload;
+}
+
+async function handleCookiesUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const el = document.getElementById('cookies-state');
+  el.innerHTML = '<p class="asset-empty">Uploading...</p>';
+  try {
+    cookiesInfo = await apiUpload('/api/cookies/upload', file);
+    renderCookiesState();
+    showToast('success', 'Cookies uploaded');
+  } catch (err) {
+    showToast('error', `Cookies upload failed: ${err.message}`);
+    renderCookiesState();
+  }
+}
+
+async function deleteCookies() {
+  if (!await showConfirm('Delete the cookies file? Sites that need a login will stop working until a new one is uploaded.')) return;
+  try {
+    await apiDelete('/api/cookies');
+    await reloadCookies();
+    showToast('success', 'Cookies deleted');
+  } catch (err) {
+    showToast('error', err.message);
+  }
+}
+
 // ── Content section ───────────────────────────────────────────────────────────
 
 function updateKofiFields() {
@@ -1055,6 +1126,7 @@ function showToast(type, msg) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 reloadConfig().catch(err => console.error('init failed:', err));
+reloadCookies();
 
 let _resizeRafPending = false;
 window.addEventListener('resize', () => {

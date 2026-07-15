@@ -137,11 +137,17 @@ The admin container has no built-in authentication. Secure it at the network or 
 | Show Paste button | Toggle the Paste button on/off |
 | Ko-fi username | Ko-fi username for the support widget; leave empty to disable |
 
-Settings are stored in `./data/config/config.json` on the shared Docker volume. The public container mounts it read-only.
+Settings are stored in `./data/config/config.json` on the shared Docker volume.
 
 ### Logo and favicon
 
 Upload a logo (AVIF or WebP, aspect ratio 1:1 to 5:1) or favicon (any image; cropped to square) from the Branding tab. Assets are stored in `./data/static/` and served at `/assets/`. Deleting an asset reverts to the default text title or browser default favicon.
+
+### Cookies
+
+Some sites only serve content to logged-in users; the most common case is NSFW posts on X/Twitter. Upload a Netscape-format `cookies.txt` from the Content tab and it is passed to yt-dlp on every download, taking effect immediately.
+
+To create the file, log in to the site in your browser (for X, also enable "Display media that may contain sensitive content" in settings), then export cookies with an extension like [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc). One file can hold cookies for several sites; yt-dlp only sends the ones matching each download's domain.
 
 ### Statistics and logs
 
@@ -167,6 +173,8 @@ To show a "By downloading, you agree to our Legal Disclaimer" notice on the publ
   db/
     requests.db             # SQLite request log; created automatically
     GeoLite2-Country.mmdb   # Optional; enables country resolution in logs
+  cookies.txt               # Optional; login cookies for yt-dlp, managed from the admin panel
+  cookies.timestamp         # Upload time of cookies.txt; managed automatically
 ```
 
 ---
