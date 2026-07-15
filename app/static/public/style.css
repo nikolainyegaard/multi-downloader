@@ -9,8 +9,10 @@
   --accent-hover: #2563eb;
   --error: #ef4444;
   --success: #22c55e;
-  --radius: 12px;
-  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --focus-ring: color-mix(in srgb, var(--accent) 28%, transparent);
   color-scheme: dark;
 }
 
@@ -23,6 +25,7 @@
     --border: #e0e0e0;
     --text: #111111;
     --text-muted: #6b7280;
+    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.07);
     color-scheme: light;
   }
 }
@@ -35,6 +38,7 @@
   --border: #e0e0e0;
   --text: #111111;
   --text-muted: #6b7280;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.07);
   color-scheme: light;
 }
 
@@ -52,6 +56,10 @@ html, body {
 
 body {
   background: var(--bg);
+  /* faint accent glow behind the header; browsers without color-mix keep the plain bg above */
+  background:
+    radial-gradient(120% 45% at 50% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
@@ -108,6 +116,7 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: var(--shadow-card);
 }
 
 /* URL input row */
@@ -123,10 +132,15 @@ h1 {
 
 .input-row:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .input-row.invalid {
   border-color: var(--error);
+}
+
+.input-row.invalid:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 25%, transparent);
 }
 
 #url-input {
@@ -147,7 +161,7 @@ h1 {
 .clear-btn {
   background: transparent;
   border: none;
-  color: var(--error);
+  color: var(--text-muted);
   padding: 0 10px;
   height: 100%;
   min-height: 50px;
@@ -161,6 +175,10 @@ h1 {
 
 .clear-btn:hover {
   opacity: 1;
+}
+
+.input-row.invalid .clear-btn {
+  color: var(--error);
 }
 
 #paste-btn {
@@ -208,7 +226,7 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: background 0.15s, opacity 0.15s, border-radius 0.1s;
+  transition: background 0.15s, opacity 0.15s, border-radius 0.1s, box-shadow 0.15s, transform 0.1s;
   min-height: 54px;
 }
 
@@ -218,11 +236,24 @@ h1 {
 
 #download-btn:hover:not(:disabled) {
   background: var(--accent-hover);
+  box-shadow: 0 4px 14px var(--focus-ring);
+}
+
+#download-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 #download-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+#download-btn:focus-visible,
+#quality-toggle:focus-visible,
+#paste-btn:focus-visible,
+.clear-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Quality toggle (right side of split button) */
@@ -323,26 +354,18 @@ h1 {
   to { transform: rotate(360deg); }
 }
 
-/* Spinner variant for light-on-dark surfaces */
-.spinner--muted {
-  border-color: var(--border);
-  border-top-color: var(--text-muted);
-}
-
 /* Preview card */
 #preview {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  animation: preview-in 0.2s ease;
 }
 
-.preview-loading {
-  padding: 16px;
+@keyframes preview-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .preview-content {
@@ -357,7 +380,7 @@ h1 {
   width: 96px;
   height: 54px; /* 16:9 */
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 6px;
   flex-shrink: 0;
   background: var(--border);
 }

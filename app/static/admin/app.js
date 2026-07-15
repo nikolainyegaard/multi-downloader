@@ -406,7 +406,8 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
   btn.disabled = true;
   try {
     if (currentSection === 'branding') {
-      const accent = document.getElementById('accent_color').value;
+      // lowercase so the saved value always matches getFormValue's dirty check
+      const accent = document.getElementById('accent_color').value.toLowerCase();
       await apiPost('/api/config', configPayload({
         site_title:    document.getElementById('site_title').value.trim(),
         browser_title: document.getElementById('browser_title').value.trim(),
@@ -761,7 +762,7 @@ function drawDonut(canvasId, legendId, segments) {
     legendEl.innerHTML = colored.map(s => `
       <span class="legend-item">
         <span class="legend-dot" style="background:${s.color}"></span>
-        ${s.name} (${s.count})
+        ${esc(s.name)} (${s.count})
       </span>`).join('');
   }
 
@@ -957,11 +958,11 @@ async function loadLogs(page) {
   const rows = data.items.map(row => `
     <tr>
       <td title="${row.ts}">${formatTs(row.ts)}</td>
-      <td>${row.ip ?? '-'}</td>
+      <td>${row.ip ? esc(row.ip) : '-'}</td>
       <td>${row.country ?? '-'}</td>
       <td>${row.endpoint ?? '-'}</td>
-      <td>${row.platform ?? '-'}</td>
-      <td class="log-cell-url" title="${row.url ?? ''}">${row.url ? truncate(row.url, 48) : '-'}</td>
+      <td>${row.platform ? esc(row.platform) : '-'}</td>
+      <td class="log-cell-url" title="${esc(row.url ?? '')}">${row.url ? esc(truncate(row.url, 48)) : '-'}</td>
       <td class="${row.success ? 'log-status-ok' : 'log-status-err'}">${row.success ? 'OK' : 'Fail'}</td>
       <td>${row.duration_ms != null ? `${row.duration_ms}ms` : '-'}</td>
     </tr>`).join('');
@@ -999,6 +1000,13 @@ async function loadLogs(page) {
 
   document.getElementById('logs-prev')?.addEventListener('click', () => loadLogs(page - 1));
   document.getElementById('logs-next')?.addEventListener('click', () => loadLogs(page + 1));
+}
+
+// Escape untrusted values (visitor-submitted URLs, spoofable IPs) before innerHTML
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
 }
 
 function formatTs(ts) {

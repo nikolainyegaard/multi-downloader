@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Visitor-submitted URLs and forwarded IPs are now escaped before rendering in the admin logs table and statistics legend, closing a stored XSS in the admin panel
+
+### Fixed
+- Single-stream downloads are remuxed to MP4 as intended; the previous remux option was silently ignored by the yt-dlp Python API
+- `data/cookies.txt` is now actually passed to yt-dlp; it was documented but never wired up
+- Request log writes are awaited instead of fired as untracked tasks, so entries can no longer be dropped mid-write
+- Logs API clamps `page` and `per_page`; `page=0` previously produced an invalid negative query offset
+- Save button no longer stays visible forever after saving an accent color typed in uppercase
+
+### Changed
+- Public page refresh: accent-tinted backdrop, card shadow, focus rings on the URL field and buttons, hover and press feedback on the download button, preview card fade-in
+- Clear button in the URL field appears whenever there is text, not only for invalid URLs; it turns red only when the URL is invalid
+
 ## [0.3.0] - 2026-04-18
 
 ### Added

@@ -477,20 +477,6 @@ async def get_stats():
             """
         )).fetchall()
 
-    platform_counts: dict[str, int] = {}
-    for r in rows:
-        p = _platform(r["url"])
-        if p:
-            platform_counts[p] = platform_counts.get(p, 0) + r["cnt"]
-
-    services = sorted(
-        [{"name": k, "count": v} for k, v in platform_counts.items()],
-        key=lambda x: x["count"],
-        reverse=True,
-    )[:8]
-
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
         daily_rows = await (await db.execute(
             """
             SELECT
@@ -504,6 +490,18 @@ async def get_stats():
             LIMIT 14
             """
         )).fetchall()
+
+    platform_counts: dict[str, int] = {}
+    for r in rows:
+        p = _platform(r["url"])
+        if p:
+            platform_counts[p] = platform_counts.get(p, 0) + r["cnt"]
+
+    services = sorted(
+        [{"name": k, "count": v} for k, v in platform_counts.items()],
+        key=lambda x: x["count"],
+        reverse=True,
+    )[:8]
 
     daily = [{"date": r["date"], "ok": r["ok"], "err": r["err"]} for r in reversed(daily_rows)]
 
@@ -521,6 +519,9 @@ async def get_stats():
 
 @app.get("/api/logs")
 async def get_logs(page: int = 1, per_page: int = 50):
+    page = max(1, page)
+    per_page = min(max(1, per_page), 500)
+
     if not DB_PATH.exists():
         return {"available": False, "items": [], "total": 0, "pages": 0, "page": page}
 

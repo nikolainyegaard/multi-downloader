@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app.config import CONFIG_DIR, LEGAL_DIR, STATIC_ASSETS_DIR, load_config, migrate_assets_to_static
+from app.config import LEGAL_DIR, STATIC_ASSETS_DIR, load_config, migrate_assets_to_static
 from app.db import close_db, init_db, log_request
 from app.downloader import download_video, get_video_info
 
@@ -213,18 +213,18 @@ async def info(req: DownloadRequest, request: Request):
     try:
         async with _domain_semaphores[_domain(url)]:
             data = await asyncio.to_thread(get_video_info, url)
-        asyncio.create_task(log_request(
+        await log_request(
             ip=client_ip,
             user_agent=user_agent,
             endpoint="info",
             url=url,
             success=True,
             duration_ms=int((time.monotonic() - start) * 1000),
-        ))
+        )
         return data
     except yt_dlp.utils.DownloadError as e:
         msg = str(e).removeprefix("ERROR: ")
-        asyncio.create_task(log_request(
+        await log_request(
             ip=client_ip,
             user_agent=user_agent,
             endpoint="info",
@@ -232,10 +232,10 @@ async def info(req: DownloadRequest, request: Request):
             success=False,
             error=str(e),
             duration_ms=int((time.monotonic() - start) * 1000),
-        ))
+        )
         raise HTTPException(status_code=400, detail=msg)
     except Exception as e:
-        asyncio.create_task(log_request(
+        await log_request(
             ip=client_ip,
             user_agent=user_agent,
             endpoint="info",
@@ -243,7 +243,7 @@ async def info(req: DownloadRequest, request: Request):
             success=False,
             error=f"{type(e).__name__}: {e}",
             duration_ms=int((time.monotonic() - start) * 1000),
-        ))
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -264,7 +264,7 @@ async def download(req: DownloadRequest, request: Request):
     except yt_dlp.utils.DownloadError as e:
         shutil.rmtree(tmpdir, ignore_errors=True)
         msg = str(e).removeprefix("ERROR: ")
-        asyncio.create_task(log_request(
+        await log_request(
             ip=client_ip,
             user_agent=user_agent,
             endpoint="download",
@@ -272,11 +272,11 @@ async def download(req: DownloadRequest, request: Request):
             success=False,
             error=str(e),
             duration_ms=int((time.monotonic() - start) * 1000),
-        ))
+        )
         raise HTTPException(status_code=400, detail=msg)
     except Exception as e:
         shutil.rmtree(tmpdir, ignore_errors=True)
-        asyncio.create_task(log_request(
+        await log_request(
             ip=client_ip,
             user_agent=user_agent,
             endpoint="download",
@@ -284,12 +284,12 @@ async def download(req: DownloadRequest, request: Request):
             success=False,
             error=f"{type(e).__name__}: {e}",
             duration_ms=int((time.monotonic() - start) * 1000),
-        ))
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
     if not os.path.exists(filepath):
         shutil.rmtree(tmpdir, ignore_errors=True)
-        asyncio.create_task(log_request(
+        await log_request(
             ip=client_ip,
             user_agent=user_agent,
             endpoint="download",
@@ -297,7 +297,7 @@ async def download(req: DownloadRequest, request: Request):
             success=False,
             error="download produced no output file",
             duration_ms=int((time.monotonic() - start) * 1000),
-        ))
+        )
         raise HTTPException(status_code=500, detail="Download produced no output file")
 
     filename = os.path.basename(filepath)
@@ -314,7 +314,7 @@ async def download(req: DownloadRequest, request: Request):
         finally:
             elapsed = int((time.monotonic() - start) * 1000)
             shutil.rmtree(tmpdir, ignore_errors=True)
-            asyncio.create_task(log_request(
+            await log_request(
                 ip=client_ip,
                 user_agent=user_agent,
                 endpoint="download",
@@ -324,7 +324,7 @@ async def download(req: DownloadRequest, request: Request):
                 filename=filename,
                 filesize=filesize,
                 duration_ms=elapsed,
-            ))
+            )
 
     return StreamingResponse(
         stream_and_cleanup(),

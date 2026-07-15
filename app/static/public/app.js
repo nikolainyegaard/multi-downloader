@@ -90,8 +90,6 @@ const qualityLabel   = document.getElementById('quality-label');
 const qualityMenu    = document.getElementById('quality-menu');
 const statusEl       = document.getElementById('status');
 const previewEl      = document.getElementById('preview');
-const previewLoading = document.getElementById('preview-loading');
-const previewContent = document.getElementById('preview-content');
 const previewThumb   = document.getElementById('preview-thumb');
 const previewTitle   = document.getElementById('preview-title');
 const previewMeta    = document.getElementById('preview-meta');
@@ -291,8 +289,6 @@ function triggerPreview(url) {
         previewThumb.hidden = true;
       }
 
-      previewLoading.hidden = true;
-      previewContent.hidden = false;
       previewEl.hidden = false;
     })
     .catch((err) => {
@@ -316,8 +312,6 @@ function hidePreview() {
   clearPreviewDebounce();
   abortPreview();
   previewEl.hidden = true;
-  previewLoading.hidden = true;
-  previewContent.hidden = true;
   previewThumb.src = '';
 }
 
@@ -391,7 +385,7 @@ function triggerDownload(blob, filename) {
 function setInputState(url) {
   const invalid = url.length > 0 && !isValidUrl(url);
   inputRow.classList.toggle('invalid', invalid);
-  clearBtn.hidden = !invalid;
+  clearBtn.hidden = url.length === 0;
 }
 
 function isValidUrl(str) {

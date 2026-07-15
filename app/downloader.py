@@ -2,6 +2,8 @@ import os
 import re
 import yt_dlp
 
+from app.config import DATA_DIR
+
 # Shorthand tags for common services; anything else falls back to the extractor name.
 _SERVICE_TAGS = {
     "youtube": "yt",
@@ -37,6 +39,15 @@ _COMMON_OPTS: dict = {
         },
     },
 }
+
+
+def _base_opts() -> dict:
+    """Common opts plus the cookies file, checked per call so drop-in cookies need no restart."""
+    opts = dict(_COMMON_OPTS)
+    cookies = DATA_DIR / "cookies.txt"
+    if cookies.exists():
+        opts["cookiefile"] = str(cookies)
+    return opts
 
 
 def _service_tag(extractor: str) -> str:
@@ -81,7 +92,7 @@ def get_video_info(url: str) -> dict:
     Raises yt_dlp.utils.DownloadError on failure.
     """
     opts = {
-        **_COMMON_OPTS,
+        **_base_opts(),
         "skip_download": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -112,13 +123,15 @@ def download_video(url: str, output_dir: str, height: int | None = None) -> str:
         fmt = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
     opts = {
-        **_COMMON_OPTS,
+        **_base_opts(),
         # Use a simple unique name during download; renamed to the final format after.
         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
         "format": fmt,
         "merge_output_format": "mp4",
-        # Remux single-stream downloads to MP4 without re-encoding.
-        "remux_video": "mp4",
+        # Remux single-stream downloads to MP4 without re-encoding. The CLI-style
+        # "remux_video" key is silently ignored by the Python API; the postprocessor
+        # is the working equivalent and skips files that are already MP4.
+        "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
     }
 
     with yt_dlp.YoutubeDL(opts) as ydl:
