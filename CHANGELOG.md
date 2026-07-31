@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public page refresh: accent-tinted backdrop, card shadow, focus rings on the URL field and buttons, hover and press feedback on the download button, preview card fade-in
 - Clear button in the URL field appears whenever there is text, not only for invalid URLs; it turns red only when the URL is invalid
 
+### Fixed
+- Logs section in the admin panel showed 404: the request used an absolute path that escaped the /admin mount and hit the public app
+
 ### Removed
 - ADMIN_MODE env var and the second compose service; the Authentik forward_auth requirement is gone
 

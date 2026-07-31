@@ -1014,7 +1014,7 @@ async function loadLogs(page) {
 
   let data;
   try {
-    data = await apiGet(`/api/logs?page=${page}&per_page=50`);
+    data = await apiGet(`api/logs?page=${page}&per_page=50`);
   } catch (err) {
     el.innerHTML = `<div class="logs-unavailable"><p>${err.message}</p></div>`;
     return;
