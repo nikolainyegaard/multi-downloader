@@ -1181,19 +1181,15 @@ canvas.chart {
 
 table.log-table {
   width: 100%;
-  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.8rem;
 }
 
-/* Fixed column widths; URL takes whatever remains, long values ellipsize */
-.log-table th:nth-child(1) { width: 100px; }  /* Time */
-.log-table th:nth-child(2) { width: 96px; }   /* IP */
-.log-table th:nth-child(3) { width: 68px; }   /* Country */
-.log-table th:nth-child(4) { width: 80px; }   /* Endpoint */
-.log-table th:nth-child(5) { width: 104px; }  /* Platform */
-.log-table th:nth-child(7) { width: 60px; }   /* Status */
-.log-table th:nth-child(8) { width: 76px; }   /* Duration */
+/* Columns hug their content and the URL column takes the remaining width.
+   The IP column fits an IPv4 address; longer IPv6 values ellipsize, with
+   the full address in the cell tooltip */
+.log-table th:nth-child(6) { width: 100%; }   /* URL */
+.log-table td:nth-child(2) { max-width: 140px; }  /* IP */
 
 .log-table th {
   padding: 10px 14px;
