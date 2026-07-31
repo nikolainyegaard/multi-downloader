@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Admin panel moved from a separate ADMIN_MODE container on its own subdomain (behind Authentik) to /admin inside the main app; one container, one domain, sessions last 7 days by default
 - Public page refresh: accent-tinted backdrop, card shadow, focus rings on the URL field and buttons, hover and press feedback on the download button, preview card fade-in
 - Clear button in the URL field appears whenever there is text, not only for invalid URLs; it turns red only when the URL is invalid
+- Logs table URL column shows a clickable "Link" that opens the URL in a new tab, instead of the truncated URL text; the full URL is still shown on hover
 
 ### Fixed
 - Logs section in the admin panel showed 404: the request used an absolute path that escaped the /admin mount and hit the public app

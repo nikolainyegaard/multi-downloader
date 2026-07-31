@@ -1043,7 +1043,7 @@ async function loadLogs(page) {
       <td>${row.country ?? '-'}</td>
       <td>${row.endpoint ?? '-'}</td>
       <td>${row.platform ? esc(row.platform) : '-'}</td>
-      <td class="log-cell-url" title="${esc(row.url ?? '')}">${row.url ? esc(truncate(row.url, 48)) : '-'}</td>
+      <td class="log-cell-url" title="${esc(row.url ?? '')}">${/^https?:\/\//i.test(row.url ?? '') ? `<a href="${esc(row.url)}" target="_blank" rel="noopener noreferrer">Link</a>` : '-'}</td>
       <td class="${row.success ? 'log-status-ok' : 'log-status-err'}">${row.success ? 'OK' : 'Fail'}</td>
       <td>${row.duration_ms != null ? `${row.duration_ms}ms` : '-'}</td>
     </tr>`).join('');
@@ -1095,10 +1095,6 @@ function formatTs(ts) {
   try {
     return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch { return ts; }
-}
-
-function truncate(str, max) {
-  return str.length > max ? str.slice(0, max) + '...' : str;
 }
 
 // ── Danger section ────────────────────────────────────────────────────────────
