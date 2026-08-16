@@ -40,6 +40,16 @@ yt-dlp's TikTok extractor only matches `/video/` URLs, so photo posts fail with 
 
 Share links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/) are resolved with a redirect-following GET before the photo check, because they hide the `/photo/` path behind a redirect and yt-dlp's short-link extractor would resolve them to an unsupported URL.
 
+## YouTube community post images: SOCS cookie and =s0
+
+Community posts (`youtube.com/post/{id}`) are also unsupported by yt-dlp, and yt-dlp does not download images anyway. The post page is public, but two tricks are load-bearing in `downloader.py`: the `SOCS=CAI` cookie skips the EU consent redirect that would otherwise replace the page, and the image URLs in `ytInitialData` are square-cropped WebP previews whose trailing `=s{size}-...` params must be rewritten to `=s0` to get the full-resolution original (this flips the response to JPEG). The `backstagePostRenderer` is found by recursive key search because its path inside `ytInitialData` is not stable.
+
+## Instagram and X photo posts: gallery-dl as fallback, not first choice
+
+yt-dlp always gets the first attempt on Instagram and X URLs so video posts keep the quality selector and MP4 remux. Only when yt-dlp raises a DownloadError AND the URL is post-shaped (instagram.com `/p/`, `/reel/`, `/tv/`; twitter.com or x.com `/status/`) does `downloader.py` retry with gallery-dl, which resolves the post's media URLs without downloading them itself. If gallery-dl also fails, the original yt-dlp error is raised, not gallery-dl's.
+
+X tweet resolution works logged out (verified; gallery-dl returns `name=orig` full-resolution image URLs). Instagram redirects every logged-out client to the login page, so Instagram posts only work when the uploaded cookies.txt contains Instagram cookies; the file is passed to gallery-dl on every call, same no-restart behaviour as yt-dlp. The service tag for filenames comes from the extractor object's `category` attribute ("twitter", "instagram"), which is not present in the per-message metadata dicts.
+
 ## Request logging must never fail a download
 
 `log_request()` swallows all exceptions; a DB write error must never interrupt or fail a download. The insert is awaited inline (not fired as an untracked task) because untracked tasks were garbage-collected mid-write and dropped entries.

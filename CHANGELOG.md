@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - TikTok photo posts can now be downloaded: a single image arrives as a JPEG, multi-image posts as a ZIP. Share links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/) that point to photo posts work too
+- YouTube community posts with images can now be downloaded at full resolution, same single-image/ZIP delivery as TikTok photo posts; both youtube.com/post/ links and the community tab's ?lb= links work. No login or cookies needed
+- Instagram posts and X photo tweets can now be downloaded. X photo tweets work without login (NSFW still needs cookies); Instagram requires an uploaded cookies.txt with Instagram cookies. Same single-file/ZIP delivery; mixed carousels include their videos in the ZIP
 - Admin credentials are generated on first launch and printed to the container output; after signing in, a prompt asks for a new password. ADMIN_USERNAME and ADMIN_PASSWORD env vars are gone; username and password are managed in the Authentication section and stored hashed
 - Password login can be disabled for OIDC-only setups; saving validates that at least one login method stays enabled, and password login can only be turned off while OIDC is active
 - AUTH_RESET=1 env var: on next launch, disables OIDC, regenerates admin credentials and prints them to the container output (the lockout hatch)

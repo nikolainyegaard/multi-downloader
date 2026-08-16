@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 yt-dlp[default]>=2025.05.22
+gallery-dl
 mistune
 bgutil-ytdlp-pot-provider
 pillow>=10.0

@@ -20,7 +20,7 @@
 - Body: `{ "url": "https://...", "height": 720 }` (height optional; null or omitted = best available)
 - Response: `StreamingResponse` with `Content-Disposition: attachment; filename*=UTF-8''<encoded>` and `Content-Length`
 - yt-dlp downloads to a temp dir; the file is streamed to the client and the temp dir cleaned up when the stream ends
-- TikTok photo posts return a JPEG (single image) or ZIP (multiple images); `height` is ignored, and `/api/info` returns `qualities: []` and `duration: null` for them
+- Photo posts (TikTok photo posts, YouTube community posts, Instagram posts, X photo tweets) return a single file as-is or a ZIP of all media; `height` is ignored, and `/api/info` returns `qualities: []` and `duration: null` for them
 
 Static mounts, mounted last so API routes take priority:
 - **`/assets/*`**: user-uploaded assets (logo, favicons) from `data/static/`
