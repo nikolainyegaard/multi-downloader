@@ -58,6 +58,8 @@ Two services in docker-compose.yml:
 3. The file is renamed to `{service}-{uploader}-{id}.{ext}`, where service is a shorthand tag (`yt`, `ig`, `tt`, `x`) or the extractor name, and unsafe filename characters are stripped.
 4. The response streams the file with `Content-Disposition: attachment; filename*=UTF-8''...` and `Content-Length`; the temp dir is removed and the request logged when the stream finishes, complete or not.
 
+TikTok photo posts bypass yt-dlp entirely: `downloader.py` detects `/photo/` URLs (resolving share links first), scrapes the TikTok embed page for the image URLs, and delivers a JPEG (single image) or ZIP (multiple). See the gotcha in [gotchas.md](gotchas.md).
+
 Concurrency: a per-domain `asyncio.Semaphore(2)` caps simultaneous yt-dlp operations per platform domain to reduce rate-limit exposure. There is no per-user authentication or IP rate limiting on the public API; the semaphore is the only throttle.
 
 ## Frontend constraints

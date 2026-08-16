@@ -15,6 +15,7 @@ Paste a link, tap Download, get the file. Powered by [yt-dlp](https://github.com
 - Paste a URL, pick a quality, download the file directly to your device
 - Video preview with thumbnail, title, duration, and uploader before downloading
 - Quality selector: choose resolution (1080p, 720p, 480p, etc.) or let it default to best available
+- TikTok photo posts: single image as JPEG, multi-image posts as ZIP
 - YouTube bot detection bypassed via `bgutil-ytdlp-pot-provider` sidecar (no account needed)
 - Admin panel at `/admin` with username/password and optional OIDC login: branding, logo/favicon upload, request statistics, and logs
 - Optional legal disclaimer page at `/legal-disclaimer` served from a Markdown file

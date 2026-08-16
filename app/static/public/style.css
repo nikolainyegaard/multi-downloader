@@ -410,6 +410,7 @@ h1 {
   padding: 12px 14px;
   border-radius: var(--radius-sm);
   display: none;
+  overflow-wrap: anywhere;
 }
 
 #status.error {

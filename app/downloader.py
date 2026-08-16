@@ -1,6 +1,12 @@
+import json
 import os
 import re
+import zipfile
+from urllib.parse import urlparse
+
+import httpx
 import yt_dlp
+from yt_dlp.utils import DownloadError
 
 from app.config import DATA_DIR
 
@@ -85,12 +91,141 @@ def _extract_qualities(info: dict) -> list[dict]:
     return [{"label": f"{h}p", "height": h} for h in sorted(by_height.keys(), reverse=True)]
 
 
+# ── TikTok photo posts ────────────────────────────────────────────────────────
+# yt-dlp's TikTok extractor only matches /video/ URLs; photo posts fail with
+# "Unsupported URL". The main photo page bot-walls plain HTTP clients, but the
+# embed page (tiktok.com/embed/v2/{id}) serves the photo data to anyone, no
+# login cookies or TLS fingerprint checks. Scrape that and fetch the images
+# directly (approach adapted from social-downloader's photo downloads).
+
+_TIKTOK_SHORT_HOSTS = {"vm.tiktok.com", "vt.tiktok.com"}
+_PHOTO_ID_RE = re.compile(r"/photo/(\d+)")
+
+_BROWSER_HEADERS = {
+    "User-Agent": _COMMON_OPTS["http_headers"]["User-Agent"],
+    "Referer": "https://www.tiktok.com/",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def tiktok_photo_id(url: str) -> str | None:
+    """Post ID if this is a TikTok photo post URL, else None. Share links
+    (vm/vt.tiktok.com, tiktok.com/t/) are resolved first because they hide
+    the /photo/ path behind a redirect."""
+    parts = urlparse(url)
+    host = parts.netloc.lower()
+    bare = host.removeprefix("www.")
+    if host in _TIKTOK_SHORT_HOSTS or (bare == "tiktok.com" and parts.path.startswith("/t/")):
+        try:
+            resp = httpx.get(url, headers=_BROWSER_HEADERS, follow_redirects=True, timeout=15)
+            parts = urlparse(str(resp.url))
+            bare = parts.netloc.lower().removeprefix("www.")
+        except httpx.HTTPError:
+            return None
+    if bare != "tiktok.com":
+        return None
+    match = _PHOTO_ID_RE.search(parts.path)
+    return match.group(1) if match else None
+
+
+def _photo_data(post_id: str) -> dict:
+    """Fetch a photo post's videoData blob from the TikTok embed page.
+    Raises DownloadError on any failure so callers handle photo and video
+    posts identically."""
+    try:
+        resp = httpx.get(
+            f"https://www.tiktok.com/embed/v2/{post_id}",
+            headers=_BROWSER_HEADERS, follow_redirects=True, timeout=30,
+        )
+        resp.raise_for_status()
+    except httpx.HTTPError as e:
+        raise DownloadError(f"Could not fetch the photo post page: {e}")
+    match = re.search(
+        r'<script[^>]+\bid=["\']__FRONTITY_CONNECT_STATE__["\'][^>]*>([^<]+)</script>',
+        resp.text,
+    )
+    if not match:
+        raise DownloadError("Could not find post data on the page (post may be private or removed)")
+    data = (
+        json.loads(match.group(1))
+        .get("source", {})
+        .get("data", {})
+        .get(f"/embed/v2/{post_id}", {})
+        .get("videoData", {})
+    )
+    if not data.get("imagePostInfo"):
+        raise DownloadError("No photo data on the page (post may be private or removed)")
+    return data
+
+
+def _image_urls(data: dict) -> list[str]:
+    return [
+        img["urlList"][0]
+        for img in data["imagePostInfo"].get("displayImages", [])
+        if img.get("urlList")
+    ]
+
+
+def get_photo_info(post_id: str) -> dict:
+    """Photo post equivalent of get_video_info; same response shape."""
+    data = _photo_data(post_id)
+    images = _image_urls(data)
+    author = data.get("authorInfos") or {}
+    return {
+        "title": (data.get("itemInfos") or {}).get("text") or "TikTok photo post",
+        "thumbnail": images[0] if images else None,
+        "duration": None,
+        "uploader": author.get("uniqueId") or author.get("nickName"),
+        "qualities": [],
+    }
+
+
+def download_photos(post_id: str, output_dir: str) -> str:
+    """
+    Download a TikTok photo post to output_dir.
+    A single image is saved as a .jpg; multiple images are bundled into a
+    .zip (ZIP_STORED, the images are already compressed JPEGs).
+    Returns the absolute path of the output file.
+    Raises DownloadError on failure.
+    """
+    data = _photo_data(post_id)
+    urls = _image_urls(data)
+    if not urls:
+        raise DownloadError("Photo post contains no downloadable images")
+
+    author = data.get("authorInfos") or {}
+    uploader = author.get("uniqueId") or author.get("nickName") or "unknown"
+    base = f"tt-{_safe(uploader)}-{_safe(post_id)}"
+
+    def fetch(img_url: str, idx: int) -> bytes:
+        try:
+            resp = httpx.get(img_url, headers=_BROWSER_HEADERS, timeout=30)
+            resp.raise_for_status()
+            return resp.content
+        except httpx.HTTPError as e:
+            raise DownloadError(f"Failed to download photo {idx}/{len(urls)}: {e}")
+
+    if len(urls) == 1:
+        dest = os.path.join(output_dir, f"{base}.jpg")
+        with open(dest, "wb") as f:
+            f.write(fetch(urls[0], 1))
+        return dest
+
+    dest = os.path.join(output_dir, f"{base}.zip")
+    with zipfile.ZipFile(dest, "w", zipfile.ZIP_STORED) as zf:
+        for i, img_url in enumerate(urls, 1):
+            zf.writestr(f"{base}_{i:02d}.jpg", fetch(img_url, i))
+    return dest
+
+
 def get_video_info(url: str) -> dict:
     """
     Fetch metadata for a URL without downloading.
     Returns a dict with title, thumbnail, duration, uploader, qualities.
     Raises yt_dlp.utils.DownloadError on failure.
     """
+    if post_id := tiktok_photo_id(url):
+        return get_photo_info(post_id)
     opts = {
         **_base_opts(),
         "skip_download": True,
@@ -113,6 +248,8 @@ def download_video(url: str, output_dir: str, height: int | None = None) -> str:
     Returns the absolute path of the downloaded file.
     Raises yt_dlp.utils.DownloadError on failure.
     """
+    if post_id := tiktok_photo_id(url):
+        return download_photos(post_id, output_dir)
     if height is not None:
         fmt = (
             f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]"

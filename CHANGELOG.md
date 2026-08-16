@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- TikTok photo posts can now be downloaded: a single image arrives as a JPEG, multi-image posts as a ZIP. Share links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/) that point to photo posts work too
 - Admin credentials are generated on first launch and printed to the container output; after signing in, a prompt asks for a new password. ADMIN_USERNAME and ADMIN_PASSWORD env vars are gone; username and password are managed in the Authentication section and stored hashed
 - Password login can be disabled for OIDC-only setups; saving validates that at least one login method stays enabled, and password login can only be turned off while OIDC is active
 - AUTH_RESET=1 env var: on next launch, disables OIDC, regenerates admin credentials and prints them to the container output (the lockout hatch)
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logs table columns size to their content; the IP column fits an IPv4 address and truncates longer IPv6 addresses, with the full address shown on hover
 
 ### Fixed
+- Long error messages (yt-dlp errors often contain full URLs) overflowed the card; they now wrap
 - Logs section in the admin panel showed 404: the request used an absolute path that escaped the /admin mount and hit the public app
 
 ### Removed

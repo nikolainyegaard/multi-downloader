@@ -34,6 +34,12 @@ Upload time lives in the companion `data/cookies.timestamp` file because st_mtim
 
 The CLI-style `remux_video` option is silently ignored by the yt-dlp Python API. `downloader.py` uses the `FFmpegVideoRemuxer` postprocessor instead, which remuxes single-stream downloads to MP4 without re-encoding and skips files that are already MP4.
 
+## TikTok photo posts go through the embed page
+
+yt-dlp's TikTok extractor only matches `/video/` URLs, so photo posts fail with "Unsupported URL". The obvious fix (scraping `__UNIVERSAL_DATA_FOR_REHYDRATION__` from the photo page, like social-downloader does) does not work here: TikTok bot-walls that page for clients without a logged-in session or a browser TLS fingerprint, and social-downloader only gets away with it because it always sends real session cookies. The embed page (`tiktok.com/embed/v2/{id}`) serves the same photo data to anyone, plain TLS included, so `downloader.py` parses its `__FRONTITY_CONNECT_STATE__` JSON instead and fetches the images directly with httpx. Note the embed page uses different key names than the main page (`imagePostInfo.displayImages[].urlList` vs `imagePost.images[].imageURL.urlList`).
+
+Share links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/) are resolved with a redirect-following GET before the photo check, because they hide the `/photo/` path behind a redirect and yt-dlp's short-link extractor would resolve them to an unsupported URL.
+
 ## Request logging must never fail a download
 
 `log_request()` swallows all exceptions; a DB write error must never interrupt or fail a download. The insert is awaited inline (not fired as an untracked task) because untracked tasks were garbage-collected mid-write and dropped entries.
