@@ -31,6 +31,11 @@ _COMMON_OPTS: dict = {
     "fragment_retries": 5,
     "extractor_retries": 3,
     "sleep_interval_requests": 0.5,
+    # Multi-video posts (an X tweet quoting another video tweet, for example) come
+    # back as a playlist. Honour a /video/N index in the URL, otherwise take the
+    # first item; the result is unwrapped by _single() so callers see one video.
+    "noplaylist": True,
+    "playlist_items": "1",
     "http_headers": {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -45,6 +50,17 @@ _COMMON_OPTS: dict = {
         },
     },
 }
+
+
+def _single(info: dict) -> dict:
+    """Unwrap a playlist result to its only entry. A playlist dict has no formats
+    and no ext, so reading it as a video silently produces a .NA filename."""
+    if info.get("_type") == "playlist" or "entries" in info:
+        entries = [e for e in (info.get("entries") or []) if e]
+        if not entries:
+            raise DownloadError("No video could be found in this post")
+        return entries[0]
+    return info
 
 
 def _base_opts() -> dict:
@@ -435,7 +451,7 @@ def get_video_info(url: str) -> dict:
     }
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = _single(ydl.extract_info(url, download=False))
             return {
                 "title": info.get("title"),
                 "thumbnail": info.get("thumbnail"),
@@ -498,7 +514,7 @@ def _download_via_ytdlp(url: str, output_dir: str, height: int | None) -> str:
     }
 
     with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+        info = _single(ydl.extract_info(url, download=True))
         try:
             src = info["requested_downloads"][0]["filepath"]
         except (KeyError, IndexError):
@@ -508,6 +524,10 @@ def _download_via_ytdlp(url: str, output_dir: str, height: int | None) -> str:
         uploader = info.get("uploader") or info.get("channel") or info.get("uploader_id") or "unknown"
         video_id = info.get("id", "unknown")
         ext = os.path.splitext(src)[1]
+        if not os.path.isfile(src):
+            # Let the gallery-dl fallback in download_video take over instead of
+            # surfacing a FileNotFoundError from the rename below.
+            raise DownloadError("No video file was produced for this post")
 
         dest = os.path.join(output_dir, f"{_safe(tag)}-{_safe(uploader)}-{_safe(video_id)}{ext}")
         os.rename(src, dest)

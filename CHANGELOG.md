@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logs table columns size to their content; the IP column fits an IPv4 address and truncates longer IPv6 addresses, with the full address shown on hover
 
 ### Fixed
+- X tweets that quote another video tweet failed with a FileNotFoundError: yt-dlp returned them as a two-video playlist. A /video/N index in the URL now selects that video, a bare tweet URL takes the first, and a download that produces no file falls back to gallery-dl instead of crashing
 - Long error messages (yt-dlp errors often contain full URLs) overflowed the card; they now wrap
 - Logs section in the admin panel showed 404: the request used an absolute path that escaped the /admin mount and hit the public app
 
